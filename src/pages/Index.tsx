@@ -1,12 +1,50 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import Header from '@/components/Header';
+import Hero from '@/components/Hero';
+import Dashboard from '@/components/Dashboard';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { toast } = useToast();
+
+  const handleLogin = () => {
+    // Simulazione login Google
+    setIsAuthenticated(true);
+    toast({
+      title: "Accesso effettuato!",
+      description: "Benvenuto nella tua dashboard finanziaria.",
+    });
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    toast({
+      title: "Logout effettuato",
+      description: "A presto!",
+    });
+  };
+
+  const handleGetStarted = () => {
+    if (!isAuthenticated) {
+      handleLogin();
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header 
+        isAuthenticated={isAuthenticated} 
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+      />
+      
+      {isAuthenticated ? (
+        <Dashboard />
+      ) : (
+        <Hero onGetStarted={handleGetStarted} />
+      )}
     </div>
   );
 };

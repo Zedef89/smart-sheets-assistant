@@ -16,7 +16,7 @@ export function useUserSettings() {
     queryKey: ['user-settings', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('user_settings')
         .select('*')
         .eq('user_id', user.id)
@@ -31,6 +31,11 @@ export function useUserSettings() {
             .select()
             .single();
           return inserted as UserSettings;
+        }
+        // table might not exist in some environments
+        if (status === 404) {
+          console.warn('user_settings table not found');
+          return null;
         }
         console.error('Failed to load user settings', error);
         return null;

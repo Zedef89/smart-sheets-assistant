@@ -27,6 +27,7 @@ export function useAccounts() {
         return [] as Account[];
       }
 
+      if (error) throw error;
       return data as Account[];
     },
     enabled: !!user,
@@ -49,6 +50,7 @@ export function useAddAccount() {
         console.error('Failed to add account', error);
         throw error;
       }
+      if (error) throw error;
       return data as Account;
     },
     onSuccess: () => {

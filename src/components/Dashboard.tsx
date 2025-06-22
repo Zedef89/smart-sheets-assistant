@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Plus, TrendingUp, DollarSign, Calendar, Lightbulb, Loader2 } from 'lucide-react';
 import TransactionInput from './TransactionInput';
-import GoogleDriveIntegration from './GoogleDriveIntegration';
+import GoogleSheetIntegration from './GoogleSheetIntegration';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useCategories } from '@/hooks/useCategories';
@@ -168,8 +168,8 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        {/* Google Drive Integration */}
-        <GoogleDriveIntegration />
+        {/* Google Sheets Integration */}
+        <GoogleSheetIntegration />
 
         {/* Insights AI */}
         <Card className="p-6">

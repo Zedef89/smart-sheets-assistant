@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
-          scope: 'openid email profile https://www.googleapis.com/auth/drive'
+          scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets'
         }
       }
     });

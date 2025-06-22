@@ -3,17 +3,12 @@ import React from 'react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import Dashboard from '@/components/Dashboard';
-import Onboarding from '@/components/Onboarding';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAccounts } from '@/hooks/useAccounts';
-import { useUserSettings } from '@/hooks/useUserSettings';
 
 const Index = () => {
   const { user, loading, signInWithGoogle } = useAuth();
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
-  const { data: settings, isLoading: settingsLoading } = useUserSettings();
 
-  if (loading || accountsLoading || settingsLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -37,13 +32,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-
+      
       {user ? (
-        !settings?.google_sheet_id || (accounts && accounts.length === 0) ? (
-          <Onboarding onComplete={() => window.location.reload()} />
-        ) : (
-          <Dashboard />
-        )
+        <Dashboard />
       ) : (
         <Hero onGetStarted={handleGetStarted} />
       )}

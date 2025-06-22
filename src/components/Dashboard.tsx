@@ -7,7 +7,7 @@ import TransactionInput from './TransactionInput';
 import GoogleSheetIntegration from './GoogleSheetIntegration';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories } from '@/hooks/useCategories'; 
 
 const Dashboard = () => {
   const [showTransactionInput, setShowTransactionInput] = useState(false);

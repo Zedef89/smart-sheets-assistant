@@ -1,13 +1,15 @@
-
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Mic, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAddTransaction } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
+import { useAIService } from '@/hooks/useAIService';
+import VoiceRecorder from './VoiceRecorder';
 
 interface TransactionInputProps {
   onClose: () => void;
@@ -16,6 +18,7 @@ interface TransactionInputProps {
 const TransactionInput = ({ onClose }: TransactionInputProps) => {
   const [input, setInput] = useState('');
   const [manualMode, setManualMode] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -24,6 +27,28 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
   const { toast } = useToast();
   const addTransaction = useAddTransaction();
   const { data: categories } = useCategories();
+  const { processWithAI, loading: aiLoading } = useAIService();
+
+  const processWithAI_Natural = async (text: string) => {
+    const result = await processWithAI({
+      text,
+      type: 'text',
+      action: 'analyze'
+    });
+
+    if (result) {
+      // Parse AI response and extract transaction details
+      // This would depend on your n8n workflow response format
+      return {
+        description: result.result || text,
+        amount: parseFloat(result.result.match(/(\d+(?:[.,]\d{2})?)/)?.[1]?.replace(',', '.') || '0'),
+        category: result.categories?.[0] || 'Altro',
+        type: result.result.toLowerCase().includes('income') ? 'income' : 'expense'
+      };
+    }
+    
+    return null;
+  };
 
   const parseNaturalLanguage = (text: string) => {
     // Simple parsing logic - in a real app, this would be an AI service
@@ -85,7 +110,10 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
     } else {
       if (!input.trim()) return;
       
-      const parsed = parseNaturalLanguage(input);
+      // Try AI processing first, fallback to local parsing
+      const aiParsed = await processWithAI_Natural(input);
+      const parsed = aiParsed || parseNaturalLanguage(input);
+      
       if (parsed.amount === 0) {
         toast({
           title: "Errore",
@@ -118,6 +146,15 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
     }
   };
 
+  const handleVoiceTranscription = (text: string) => {
+    setInput(text);
+    setShowVoiceRecorder(false);
+    toast({
+      title: "Trascrizione completata",
+      description: "Il testo è stato trascritto dalla registrazione vocale.",
+    });
+  };
+
   const suggestions = [
     "Ho speso 25€ per la spesa al supermercato",
     "Cena fuori 45 euro",
@@ -132,7 +169,7 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl p-6 bg-white">
+      <Card className="w-full max-w-2xl p-6 bg-white max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <Sparkles className="w-5 h-5 text-emerald-600" />
@@ -144,54 +181,82 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
         </div>
 
         <div className="mb-4">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-wrap gap-2">
             <Button
               type="button"
-              variant={!manualMode ? "default" : "outline"}
-              onClick={() => setManualMode(false)}
+              variant={!manualMode && !showVoiceRecorder ? "default" : "outline"}
+              onClick={() => {
+                setManualMode(false);
+                setShowVoiceRecorder(false);
+              }}
               size="sm"
             >
+              <Brain className="w-4 h-4 mr-1" />
               AI Naturale
             </Button>
             <Button
               type="button"
-              variant={manualMode ? "default" : "outline"}
-              onClick={() => setManualMode(true)}
+              variant={showVoiceRecorder ? "default" : "outline"}
+              onClick={() => {
+                setShowVoiceRecorder(true);
+                setManualMode(false);
+              }}
               size="sm"
             >
-              Inserimento Manuale
+              <Mic className="w-4 h-4 mr-1" />
+              Vocale
+            </Button>
+            <Button
+              type="button"
+              variant={manualMode ? "default" : "outline"}
+              onClick={() => {
+                setManualMode(true);
+                setShowVoiceRecorder(false);
+              }}
+              size="sm"
+            >
+              Manuale
             </Button>
           </div>
         </div>
 
+        {showVoiceRecorder && (
+          <div className="mb-6">
+            <VoiceRecorder onTranscriptionComplete={handleVoiceTranscription} />
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          {!manualMode ? (
+          {!manualMode && !showVoiceRecorder ? (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Descrivi la tua transazione in linguaggio naturale
                 </label>
                 <div className="relative">
-                  <Input
+                  <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Es: Ho speso 15 euro per pizza..."
-                    className="pr-12 text-lg py-3"
-                    disabled={addTransaction.isPending}
+                    className="pr-12 min-h-[100px]"
+                    disabled={addTransaction.isPending || aiLoading}
                   />
                   <Button 
                     type="submit" 
                     size="sm" 
-                    disabled={!input.trim() || addTransaction.isPending}
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                    disabled={!input.trim() || addTransaction.isPending || aiLoading}
+                    className="absolute right-2 bottom-2"
                   >
-                    {addTransaction.isPending ? (
+                    {addTransaction.isPending || aiLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4" />
                     )}
                   </Button>
                 </div>
+                {aiLoading && (
+                  <p className="text-sm text-blue-600 mt-2">Processing with AI...</p>
+                )}
               </div>
 
               <div>
@@ -210,7 +275,7 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
                 </div>
               </div>
             </>
-          ) : (
+          ) : manualMode ? (
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -287,7 +352,7 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
                 )}
               </Button>
             </div>
-          )}
+          ) : null}
         </form>
       </Card>
     </div>

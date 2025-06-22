@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Plus, TrendingUp, DollarSign, Calendar, Lightbulb, Loader2 } from 'lucide-react';
 import TransactionInput from './TransactionInput';
+import GoogleDriveIntegration from './GoogleDriveIntegration';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useCategories } from '@/hooks/useCategories';
@@ -167,7 +167,10 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {/* Google Drive Integration */}
+        <GoogleDriveIntegration />
+
         {/* Insights AI */}
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">

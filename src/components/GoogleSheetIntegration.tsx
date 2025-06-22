@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Sheet as SheetIcon, Link, Upload, Loader2 } from 'lucide-react';
+import { Sheet as SheetIcon, Link, Upload, Loader2, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useUserSettings, useSaveUserSettings } from '@/hooks/useUserSettings';
 
 const GoogleSheetIntegration = () => {
-  const [isConnected, setIsConnected] = useState(false);
+  const { session } = useAuth();
+  const { toast } = useToast();
+  const { data: settings } = useUserSettings();
+  const saveSettings = useSaveUserSettings();
+
   const [loading, setLoading] = useState(false);
   const [sheetId, setSheetId] = useState('');
   const [sheetTitle, setSheetTitle] = useState('');
-  const { session } = useAuth();
-  const { toast } = useToast();
+  const isConnected = !!settings?.google_sheet_id;
+
+  useEffect(() => {
+    if (settings?.google_sheet_id) {
+      setSheetId(settings.google_sheet_id);
+      setSheetTitle(settings.google_sheet_title || '');
+    }
+  }, [settings]);
 
   const extractSheetId = (value: string) => {
     const match = value.match(/[-\w]{25,}/);
@@ -25,17 +36,23 @@ const GoogleSheetIntegration = () => {
     const id = extractSheetId(sheetId);
     try {
       if (session?.provider_token) {
-        const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=properties.title`, {
-          headers: {
-            'Authorization': `Bearer ${session.provider_token}`,
-          },
-        });
+        const response = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=properties.title`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.provider_token}`,
+            },
+          }
+        );
 
         if (response.ok) {
           const data = await response.json();
           setSheetTitle(data.properties.title);
           setSheetId(id);
-          setIsConnected(true);
+          await saveSettings.mutateAsync({
+            google_sheet_id: id,
+            google_sheet_title: data.properties.title,
+          });
           toast({
             title: 'Google Sheet Connected',
             description: `Connected to sheet "${data.properties.title}"`,
@@ -124,6 +141,14 @@ const GoogleSheetIntegration = () => {
           <div className="flex items-center space-x-2 text-green-600">
             <SheetIcon className="w-4 h-4" />
             <span>Connected to {sheetTitle}</span>
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${sheetId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-600 hover:underline"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
           <Button onClick={exportExample} disabled={loading} variant="outline">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}

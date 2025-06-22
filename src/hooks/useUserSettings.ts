@@ -41,6 +41,7 @@ export function useUserSettings() {
         return null;
       }
 
+      if (error && error.code !== 'PGRST116') throw error; // row not found
       return data as UserSettings | null;
     },
     enabled: !!user,

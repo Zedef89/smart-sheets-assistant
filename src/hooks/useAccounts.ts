@@ -31,11 +31,6 @@ export function useAccounts() {
         return [] as Account[];
       }
 
-      const { data, error, status } = await supabase
-        if (status === 404) {
-          console.warn('accounts table not found');
-          throw error;
-        }
       return data as Account[];
     },
     enabled: !!user,
@@ -49,25 +44,21 @@ export function useAddAccount() {
   return useMutation({
     mutationFn: async (name: string) => {
       if (!user) throw new Error('User not authenticated');
+
       const { data, error, status } = await supabase
-      const { data, error } = await supabase
         .from('accounts')
         .insert([{ name, user_id: user.id }])
         .select()
         .single();
+
       if (error) {
         if (status === 404) {
           console.warn('accounts table not found');
-          throw error;
         }
         console.error('Failed to add account', error);
         throw error;
       }
 
-        console.error('Failed to add account', error);
-        throw error;
-      }
-      if (error) throw error;
       return data as Account;
     },
     onSuccess: () => {

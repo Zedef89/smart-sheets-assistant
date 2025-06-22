@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAddTransaction } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import { useAIService } from '@/hooks/useAIService';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { useAuth } from '@/contexts/AuthContext';
 import VoiceRecorder from './VoiceRecorder';
 
 interface TransactionInputProps {
@@ -28,6 +30,8 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
   const addTransaction = useAddTransaction();
   const { data: categories } = useCategories();
   const { processWithAI, loading: aiLoading } = useAIService();
+  const { data: settings } = useUserSettings();
+  const { session } = useAuth();
 
   const processWithAI_Natural = async (text: string) => {
     const result = await processWithAI({
@@ -131,6 +135,34 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
 
     try {
       await addTransaction.mutateAsync(transactionData);
+      if (settings?.google_sheet_id && session?.provider_token) {
+        try {
+          await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${settings.google_sheet_id}/values/A1:append?valueInputOption=USER_ENTERED`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session.provider_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                values: [[
+                  transactionData.description,
+                  transactionData.amount,
+                  transactionData.category,
+                  transactionData.date,
+                ]],
+              }),
+            }
+          );
+        } catch (err) {
+          toast({
+            title: 'Sync error',
+            description: 'Impossibile sincronizzare con Google Sheet.',
+            variant: 'destructive',
+          });
+        }
+      }
       toast({
         title: "Transazione aggiunta!",
         description: `€${transactionData.amount.toFixed(2)} - ${transactionData.description}`,

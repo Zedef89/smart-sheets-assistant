@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AIRequest {
   text?: string;
@@ -23,33 +24,19 @@ export function useAIService() {
     setLoading(true);
     
     try {
-      // Replace with your n8n webhook URL
-      const n8nWebhookUrl = 'https://your-n8n-instance.com/webhook/ai-finance';
-      
-      const response = await fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...request,
-          timestamp: new Date().toISOString(),
-          userId: 'user-id-placeholder' // You can get this from auth context
-        })
+      const { data, error } = await supabase.functions.invoke('groq-ai', {
+        body: request,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (error) {
+        throw error;
       }
 
-      const data = await response.json();
-      
       toast({
         title: "AI Processing Complete",
         description: "Your request has been processed successfully.",
       });
-
-      return data;
+      return data as AIResponse;
     } catch (error) {
       console.error('AI Service Error:', error);
       toast({

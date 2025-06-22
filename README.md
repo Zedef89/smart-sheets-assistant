@@ -71,3 +71,10 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Environment variables
+
+Set the following secrets in your Supabase project before deploying:
+
+- `GROQ_API_KEY` used by the `groq-ai` function
+- `STRIPE_SECRET_KEY` used by the `stripe-checkout` function

@@ -49,12 +49,21 @@ export function useAddAccount() {
   return useMutation({
     mutationFn: async (name: string) => {
       if (!user) throw new Error('User not authenticated');
+      const { data, error, status } = await supabase
       const { data, error } = await supabase
         .from('accounts')
         .insert([{ name, user_id: user.id }])
         .select()
         .single();
       if (error) {
+        if (status === 404) {
+          console.warn('accounts table not found');
+          throw error;
+        }
+        console.error('Failed to add account', error);
+        throw error;
+      }
+
         console.error('Failed to add account', error);
         throw error;
       }

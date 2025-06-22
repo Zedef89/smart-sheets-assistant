@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    const { error } = await supabase.auth.signInWithOAuth({
   provider: 'google',
   options: {
-    redirectTo: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    redirectTo: process.env.NEXT_PUBLIC_SITE_URL || 'https://smart-sheets-assistant.vercel.app',
     queryParams: {
       access_type: 'offline',
       prompt: 'consent',

@@ -3,8 +3,11 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Send, Mic, Sparkles } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAddTransaction } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
 
 interface TransactionInputProps {
   onClose: () => void;
@@ -12,24 +15,107 @@ interface TransactionInputProps {
 
 const TransactionInput = ({ onClose }: TransactionInputProps) => {
   const [input, setInput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+  const [type, setType] = useState<'income' | 'expense'>('expense');
+  
   const { toast } = useToast();
+  const addTransaction = useAddTransaction();
+  const { data: categories } = useCategories();
+
+  const parseNaturalLanguage = (text: string) => {
+    // Simple parsing logic - in a real app, this would be an AI service
+    const lowerText = text.toLowerCase();
+    
+    // Extract amount
+    const amountMatch = text.match(/(\d+(?:[.,]\d{2})?)\s*(?:euro|€|eur)/i);
+    const extractedAmount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) : 0;
+    
+    // Determine type
+    const isIncome = lowerText.includes('stipendio') || lowerText.includes('guadagno') || lowerText.includes('entrata') || lowerText.includes('ricevo');
+    const transactionType: 'income' | 'expense' = isIncome ? 'income' : 'expense';
+    
+    // Extract category
+    let extractedCategory = 'Altro';
+    if (categories) {
+      for (const cat of categories) {
+        if (lowerText.includes(cat.name.toLowerCase()) || 
+            (cat.name === 'Cibo' && (lowerText.includes('pizza') || lowerText.includes('cena') || lowerText.includes('pranzo') || lowerText.includes('ristorante') || lowerText.includes('sushi'))) ||
+            (cat.name === 'Trasporti' && (lowerText.includes('benzina') || lowerText.includes('metro') || lowerText.includes('taxi'))) ||
+            (cat.name === 'Shopping' && (lowerText.includes('vestiti') || lowerText.includes('scarpe'))) ||
+            (cat.name === 'Stipendio' && lowerText.includes('stipendio'))) {
+          extractedCategory = cat.name;
+          break;
+        }
+      }
+    }
+    
+    return {
+      description: text,
+      amount: extractedAmount,
+      category: extractedCategory,
+      type: transactionType
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-
-    setIsProcessing(true);
     
-    // Simulazione chiamata AI
-    setTimeout(() => {
-      setIsProcessing(false);
+    let transactionData;
+    
+    if (manualMode) {
+      if (!description || !amount || !category) {
+        toast({
+          title: "Errore",
+          description: "Compila tutti i campi obbligatori.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      transactionData = {
+        description,
+        amount: parseFloat(amount),
+        category,
+        type,
+        date: new Date().toISOString().split('T')[0]
+      };
+    } else {
+      if (!input.trim()) return;
+      
+      const parsed = parseNaturalLanguage(input);
+      if (parsed.amount === 0) {
+        toast({
+          title: "Errore",
+          description: "Non riesco a identificare l'importo. Prova con un formato come '15 euro'.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      transactionData = {
+        ...parsed,
+        date: new Date().toISOString().split('T')[0]
+      };
+    }
+
+    try {
+      await addTransaction.mutateAsync(transactionData);
       toast({
-        title: "Transazione elaborata!",
-        description: "La tua spesa è stata categorizzata e salvata automaticamente.",
+        title: "Transazione aggiunta!",
+        description: `€${transactionData.amount.toFixed(2)} - ${transactionData.description}`,
       });
       onClose();
-    }, 2000);
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiungere la transazione. Riprova.",
+        variant: "destructive"
+      });
+    }
   };
 
   const suggestions = [
@@ -39,6 +125,10 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
     "Stipendio 2200 euro",
     "Bolletta elettricità 80€"
   ];
+
+  const expenseCategories = categories?.filter(c => c.type === 'expense' || c.type === 'both') || [];
+  const incomeCategories = categories?.filter(c => c.type === 'income' || c.type === 'both') || [];
+  const availableCategories = type === 'expense' ? expenseCategories : incomeCategories;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -53,61 +143,151 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrivi la tua transazione in linguaggio naturale
-            </label>
-            <div className="relative">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Es: Ho speso 15 euro per pizza..."
-                className="pr-20 text-lg py-3"
-                disabled={isProcessing}
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
-                <Button type="button" size="sm" variant="ghost">
-                  <Mic className="w-4 h-4" />
-                </Button>
-                <Button type="submit" size="sm" disabled={!input.trim() || isProcessing}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+        <div className="mb-4">
+          <div className="flex space-x-2">
+            <Button
+              type="button"
+              variant={!manualMode ? "default" : "outline"}
+              onClick={() => setManualMode(false)}
+              size="sm"
+            >
+              AI Naturale
+            </Button>
+            <Button
+              type="button"
+              variant={manualMode ? "default" : "outline"}
+              onClick={() => setManualMode(true)}
+              size="sm"
+            >
+              Inserimento Manuale
+            </Button>
           </div>
+        </div>
 
-          {isProcessing && (
-            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-              <div className="flex items-center space-x-3">
-                <div className="animate-pulse w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-emerald-700 font-medium">L'AI sta elaborando la tua transazione...</span>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {!manualMode ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Descrivi la tua transazione in linguaggio naturale
+                </label>
+                <div className="relative">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Es: Ho speso 15 euro per pizza..."
+                    className="pr-12 text-lg py-3"
+                    disabled={addTransaction.isPending}
+                  />
+                  <Button 
+                    type="submit" 
+                    size="sm" 
+                    disabled={!input.trim() || addTransaction.isPending}
+                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                  >
+                    {addTransaction.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Esempi di transazioni:</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setInput(suggestion)}
+                      className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-700 transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo
+                </label>
+                <Select value={type} onValueChange={(value: 'income' | 'expense') => setType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="expense">Spesa</SelectItem>
+                    <SelectItem value="income">Entrata</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Descrizione *
+                </label>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Es: Cena al ristorante"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Importo (€) *
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Categoria *
+                </label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={addTransaction.isPending}
+                className="w-full"
+              >
+                {addTransaction.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Aggiungi Transazione'
+                )}
+              </Button>
             </div>
           )}
-
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Esempi di transazioni:</h4>
-            <div className="grid grid-cols-1 gap-2">
-              {suggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setInput(suggestion)}
-                  className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-700 transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <Sparkles className="w-4 h-4" />
-              <span>Powered by AI - Categorizzazione automatica</span>
-            </div>
-          </div>
         </form>
       </Card>
     </div>

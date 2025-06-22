@@ -1,46 +1,39 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import Dashboard from '@/components/Dashboard';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { toast } = useToast();
+  const { user, loading, signInWithGoogle } = useAuth();
 
-  const handleLogin = () => {
-    // Simulazione login Google
-    setIsAuthenticated(true);
-    toast({
-      title: "Accesso effettuato!",
-      description: "Benvenuto nella tua dashboard finanziaria.",
-    });
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    toast({
-      title: "Logout effettuato",
-      description: "A presto!",
-    });
-  };
-
-  const handleGetStarted = () => {
-    if (!isAuthenticated) {
-      handleLogin();
+  const handleGetStarted = async () => {
+    if (!user) {
+      try {
+        await signInWithGoogle();
+      } catch (error) {
+        console.error('Failed to sign in:', error);
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        isAuthenticated={isAuthenticated} 
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-      />
+      <Header />
       
-      {isAuthenticated ? (
+      {user ? (
         <Dashboard />
       ) : (
         <Hero onGetStarted={handleGetStarted} />

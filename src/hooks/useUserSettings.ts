@@ -16,11 +16,31 @@ export function useUserSettings() {
     queryKey: ['user-settings', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('user_settings')
         .select('*')
         .eq('user_id', user.id)
         .single();
+
+      if (error) {
+        // row not found, create an empty settings record
+        if (error.code === 'PGRST116') {
+          const { data: inserted } = await supabase
+            .from('user_settings')
+            .insert({ user_id: user.id })
+            .select()
+            .single();
+          return inserted as UserSettings;
+        }
+        // table might not exist in some environments
+        if (status === 404) {
+          console.warn('user_settings table not found');
+          return null;
+        }
+        console.error('Failed to load user settings', error);
+        return null;
+      }
+
       if (error && error.code !== 'PGRST116') throw error; // row not found
       return data as UserSettings | null;
     },

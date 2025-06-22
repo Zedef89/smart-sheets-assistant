@@ -16,12 +16,26 @@ export function useAccounts() {
     queryKey: ['accounts', user?.id],
     queryFn: async () => {
       if (!user) return [] as Account[];
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('accounts')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at');
-      if (error) throw error;
+
+      if (error) {
+        if (status === 404) {
+          console.warn('accounts table not found');
+          return [] as Account[];
+        }
+        console.error('Failed to load accounts', error);
+        return [] as Account[];
+      }
+
+      const { data, error, status } = await supabase
+        if (status === 404) {
+          console.warn('accounts table not found');
+          throw error;
+        }
       return data as Account[];
     },
     enabled: !!user,
@@ -40,6 +54,10 @@ export function useAddAccount() {
         .insert([{ name, user_id: user.id }])
         .select()
         .single();
+      if (error) {
+        console.error('Failed to add account', error);
+        throw error;
+      }
       if (error) throw error;
       return data as Account;
     },

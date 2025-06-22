@@ -99,6 +99,50 @@ export type Database = {
         }
         Relationships: []
       }
+      ,
+      accounts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ,
+      user_settings: {
+        Row: {
+          created_at: string
+          google_sheet_id: string | null
+          google_sheet_title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          google_sheet_id?: string | null
+          google_sheet_title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          google_sheet_id?: string | null
+          google_sheet_title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

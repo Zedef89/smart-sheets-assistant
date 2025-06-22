@@ -26,7 +26,7 @@ const Header = () => {
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">€</span>
@@ -46,8 +46,11 @@ const Header = () => {
               <span className="text-sm text-gray-700">
                 {user.user_metadata?.full_name || user.email}
               </span>
-              <Button 
-                variant="outline" 
+              <a href="/settings" className="text-sm text-emerald-600 hover:underline">
+                Impostazioni
+              </a>
+              <Button
+                variant="outline"
                 onClick={handleSignOut}
                 className="flex items-center space-x-2"
                 disabled={loading}

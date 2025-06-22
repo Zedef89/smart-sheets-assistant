@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Sheet as SheetIcon, Link, Upload, Loader2 } from 'lucide-react';
+import { Sheet as SheetIcon, Link, Upload, Loader2, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useUserSettings, useUpdateUserSettings } from '@/hooks/useUserSettings';
 
 const GoogleSheetIntegration = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -13,11 +14,21 @@ const GoogleSheetIntegration = () => {
   const [sheetTitle, setSheetTitle] = useState('');
   const { session } = useAuth();
   const { toast } = useToast();
+  const { data: settings } = useUserSettings();
+  const updateSettings = useUpdateUserSettings();
 
   const extractSheetId = (value: string) => {
     const match = value.match(/[-\w]{25,}/);
     return match ? match[0] : value;
   };
+
+  useEffect(() => {
+    if (settings?.google_sheet_id) {
+      setSheetId(settings.google_sheet_id);
+      setSheetTitle(settings.google_sheet_title || '');
+      setIsConnected(true);
+    }
+  }, [settings]);
 
   const connectGoogleSheet = async () => {
     if (!sheetId) return;
@@ -36,6 +47,10 @@ const GoogleSheetIntegration = () => {
           setSheetTitle(data.properties.title);
           setSheetId(id);
           setIsConnected(true);
+          updateSettings.mutate({
+            google_sheet_id: id,
+            google_sheet_title: data.properties.title
+          });
           toast({
             title: 'Google Sheet Connected',
             description: `Connected to sheet "${data.properties.title}"`,
@@ -122,8 +137,16 @@ const GoogleSheetIntegration = () => {
       ) : (
         <div className="space-y-4">
           <div className="flex items-center space-x-2 text-green-600">
-            <SheetIcon className="w-4 h-4" />
-            <span>Connected to {sheetTitle}</span>
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${sheetId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-1"
+            >
+              <SheetIcon className="w-4 h-4" />
+              <span>Connected to {sheetTitle}</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
           <Button onClick={exportExample} disabled={loading} variant="outline">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}

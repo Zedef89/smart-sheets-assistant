@@ -28,7 +28,7 @@ const Landing = () => {
           implementati followup e analisi dell'AI basati su obiettivi.
         </p>
         <p className="text-gray-700">
-          Puoi iniziare gratuitamente e collegare il tuo Google Sheet per avere il
+          Puoi iniziare gratuitamente e avere il
           pieno controllo delle tue finanze.
         </p>
         <div className="space-x-4">

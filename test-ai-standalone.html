@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AI Standalone - Smart Sheets Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .audio-controls button {
+            width: auto;
+            padding: 10px 20px;
+        }
+        .transaction-result {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .transaction-field {
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .config-section {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Test AI Standalone - Smart Sheets Assistant</h1>
+        <p>Test delle funzionalità AI senza dipendenze da Supabase locale. Questo test simula il processamento delle transazioni.</p>
+        
+        <!-- Configuration -->
+        <div class="test-section config-section">
+            <h3>⚙️ Configurazione API</h3>
+            <p>Per testare con l'API Groq reale, inserisci la tua API key:</p>
+            <input type="password" id="groqApiKey" placeholder="Groq API Key (opzionale - lascia vuoto per simulazione)">
+            <p><small>⚠️ La API key verrà utilizzata solo per questo test e non verrà salvata.</small></p>
+        </div>
+
+        <!-- Test 1: Natural Language Processing -->
+        <div class="test-section">
+            <h3>📝 Test 1: Processamento Linguaggio Naturale</h3>
+            <p>Inserisci una frase per testare l'estrazione di dati finanziari:</p>
+            <textarea id="naturalLanguageInput" placeholder="Esempi:\n- Ho speso 25 euro per la pizza stasera\n- Ricevuto stipendio di 1500 euro\n- Pagato 50€ di benzina\n- Comprato scarpe per 80 euro" rows="4"></textarea>
+            <button onclick="testNaturalLanguage()" id="nlButton">🤖 Analizza Transazione</button>
+            <div id="nlResult" class="result" style="display: none;"></div>
+            <div id="nlTransaction" class="transaction-result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 2: Audio Recording and Processing -->
+        <div class="test-section">
+            <h3>🎤 Test 2: Registrazione Audio</h3>
+            <p>Registra un messaggio vocale per testare la funzionalità audio:</p>
+            <div class="audio-controls">
+                <button onclick="startRecording()" id="startBtn">🎤 Inizia Registrazione</button>
+                <button onclick="stopRecording()" id="stopBtn" disabled>⏹️ Ferma Registrazione</button>
+                <button onclick="simulateTranscription()" id="transcribeBtn" disabled>📝 Simula Trascrizione</button>
+            </div>
+            <div id="recordingStatus"></div>
+            <audio id="audioPlayback" controls style="width: 100%; margin: 10px 0; display: none;"></audio>
+            <div id="audioResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 3: Pattern Recognition -->
+        <div class="test-section">
+            <h3>🔍 Test 3: Riconoscimento Pattern</h3>
+            <p>Test del sistema di riconoscimento pattern locale (senza AI):</p>
+            <select id="testPatterns">
+                <option value="">Seleziona un esempio...</option>
+                <option value="Ho speso 15.50 euro per il pranzo al ristorante">Spesa ristorante</option>
+                <option value="Pagato 45€ di benzina alla stazione di servizio">Rifornimento carburante</option>
+                <option value="Ricevuto stipendio di 2000 euro questo mese">Stipendio mensile</option>
+                <option value="Comprato vestiti per 120 euro al centro commerciale">Shopping abbigliamento</option>
+                <option value="Bolletta elettricità 85€ pagata oggi">Bolletta utenze</option>
+                <option value="Entrata freelance 500 euro per progetto web">Lavoro freelance</option>
+            </select>
+            <button onclick="testPatternRecognition()" id="patternButton">🔍 Analizza Pattern</button>
+            <div id="patternResult" class="result" style="display: none;"></div>
+            <div id="patternTransaction" class="transaction-result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 4: Category Classification -->
+        <div class="test-section">
+            <h3>🏷️ Test 4: Classificazione Categorie</h3>
+            <p>Test del sistema di classificazione automatica delle categorie:</p>
+            <input type="text" id="categoryInput" placeholder="Descrivi una spesa o entrata...">
+            <button onclick="testCategoryClassification()" id="categoryButton">🏷️ Classifica Categoria</button>
+            <div id="categoryResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="test-section">
+            <h3>📊 Riepilogo Test</h3>
+            <div id="testSummary" class="result">
+                <p>Esegui i test sopra per vedere un riepilogo dei risultati.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+        let testResults = {
+            naturalLanguage: null,
+            audio: null,
+            patterns: null,
+            categories: null
+        };
+
+        // Categories available in the system
+        const categories = [
+            { name: 'Cibo', keywords: ['pizza', 'ristorante', 'pranzo', 'cena', 'cibo', 'mangiare', 'sushi', 'bar', 'caffè'] },
+            { name: 'Trasporti', keywords: ['benzina', 'metro', 'taxi', 'autobus', 'treno', 'carburante', 'parcheggio'] },
+            { name: 'Shopping', keywords: ['vestiti', 'scarpe', 'shopping', 'negozio', 'abbigliamento', 'centro commerciale'] },
+            { name: 'Bollette', keywords: ['bolletta', 'elettricità', 'gas', 'acqua', 'telefono', 'internet', 'utenze'] },
+            { name: 'Intrattenimento', keywords: ['cinema', 'teatro', 'concerto', 'gioco', 'divertimento', 'svago'] },
+            { name: 'Salute', keywords: ['medico', 'farmacia', 'ospedale', 'medicina', 'salute', 'dottore'] },
+            { name: 'Stipendio', keywords: ['stipendio', 'salario', 'paga', 'lavoro'] },
+            { name: 'Freelance', keywords: ['freelance', 'progetto', 'consulenza', 'lavoro autonomo'] },
+            { name: 'Investimenti', keywords: ['investimento', 'azioni', 'borsa', 'dividendi'] }
+        ];
+
+        // Test 1: Natural Language Processing
+        async function testNaturalLanguage() {
+            const input = document.getElementById('naturalLanguageInput').value;
+            const button = document.getElementById('nlButton');
+            const apiKey = document.getElementById('groqApiKey').value;
+            
+            if (!input.trim()) {
+                showResult('nlResult', 'Inserisci del testo da analizzare', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '🤖 Analizzando...';
+            
+            try {
+                let result;
+                if (apiKey) {
+                    // Use real Groq API
+                    result = await callGroqAPI(input, apiKey);
+                } else {
+                    // Use local simulation
+                    result = simulateNLProcessing(input);
+                }
+                
+                testResults.naturalLanguage = result;
+                showResult('nlResult', `Risultato analisi:\n${JSON.stringify(result, null, 2)}`, 'success');
+                showTransactionResult('nlTransaction', result);
+                updateTestSummary();
+            } catch (error) {
+                showResult('nlResult', `Errore: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🤖 Analizza Transazione';
+            }
+        }
+
+        // Test 2: Audio Recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audioElement = document.getElementById('audioPlayback');
+                    audioElement.src = audioUrl;
+                    audioElement.style.display = 'block';
+                    document.getElementById('transcribeBtn').disabled = false;
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('recordingStatus').innerHTML = '<span style="color: red;">🔴 Registrazione in corso...</span>';
+            } catch (error) {
+                showResult('audioResult', `Errore accesso microfono: ${error.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('recordingStatus').innerHTML = '<span style="color: green;">✅ Registrazione completata</span>';
+            }
+        }
+
+        async function simulateTranscription() {
+            const apiKey = document.getElementById('groqApiKey').value;
+            
+            if (apiKey && audioBlob) {
+                // Use real Whisper API if API key is provided and audio is available
+                try {
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        const audioData = base64Audio.split(',')[1];
+                        
+                        const formData = new FormData();
+                        formData.append('file', audioBlob, 'audio.wav');
+                        formData.append('model', 'whisper-large-v3');
+                        formData.append('language', 'it');
+                        formData.append('response_format', 'json');
+                        
+                        const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${apiKey}`,
+                            },
+                            body: formData,
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            const transcribedText = data.text;
+                            const result = simulateNLProcessing(transcribedText);
+                            
+                            testResults.audio = { transcription: transcribedText, analysis: result };
+                            showResult('audioResult', `Trascrizione Whisper: "${transcribedText}"\n\nAnalisi:\n${JSON.stringify(result, null, 2)}`, 'success');
+                        } else {
+                            throw new Error('Whisper API failed');
+                        }
+                    };
+                    reader.readAsDataURL(audioBlob);
+                } catch (error) {
+                    showResult('audioResult', `Errore Whisper: ${error.message}. Uso simulazione.`, 'warning');
+                    simulateTranscriptionFallback();
+                }
+            } else {
+                simulateTranscriptionFallback();
+            }
+            
+            updateTestSummary();
+        }
+        
+        function simulateTranscriptionFallback() {
+            const examples = [
+                "Ho speso venti euro per la pizza",
+                "Pagato cinquanta euro di benzina",
+                "Ricevuto stipendio di millecinquecento euro",
+                "Comprato scarpe per ottanta euro"
+            ];
+            
+            const randomText = examples[Math.floor(Math.random() * examples.length)];
+            const result = simulateNLProcessing(randomText);
+            
+            testResults.audio = { transcription: randomText, analysis: result };
+            showResult('audioResult', `Trascrizione simulata: "${randomText}"\n\nAnalisi:\n${JSON.stringify(result, null, 2)}`, 'success');
+        }
+
+        // Test 3: Pattern Recognition
+        function testPatternRecognition() {
+            const select = document.getElementById('testPatterns');
+            const text = select.value;
+            
+            if (!text) {
+                showResult('patternResult', 'Seleziona un esempio da testare', 'error');
+                return;
+            }
+
+            const result = simulateNLProcessing(text);
+            testResults.patterns = result;
+            
+            showResult('patternResult', `Pattern riconosciuto:\n${JSON.stringify(result, null, 2)}`, 'success');
+            showTransactionResult('patternTransaction', result);
+            updateTestSummary();
+        }
+
+        // Test 4: Category Classification
+        function testCategoryClassification() {
+            const input = document.getElementById('categoryInput').value;
+            
+            if (!input.trim()) {
+                showResult('categoryResult', 'Inserisci una descrizione', 'error');
+                return;
+            }
+
+            const category = classifyCategory(input);
+            testResults.categories = { input, category };
+            
+            showResult('categoryResult', `Testo: "${input}"\nCategoria identificata: ${category}`, 'success');
+            updateTestSummary();
+        }
+
+        // Simulation functions
+        function simulateNLProcessing(text) {
+            const lowerText = text.toLowerCase();
+            
+            // Extract amount
+            const amountMatch = text.match(/(\d+(?:[.,]\d{2})?)\s*(?:euro|€|eur)/i) || 
+                               text.match(/(\d+(?:[.,]\d{2})?)/i);
+            const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) : 0;
+            
+            // Determine type
+            const isIncome = lowerText.includes('stipendio') || lowerText.includes('guadagno') || 
+                           lowerText.includes('entrata') || lowerText.includes('ricevo') ||
+                           lowerText.includes('freelance') || lowerText.includes('salario');
+            
+            // Extract category
+            const category = classifyCategory(text);
+            
+            // Extract description
+            let description = text;
+            if (amountMatch) {
+                description = text.replace(amountMatch[0], '').trim();
+                description = description.replace(/^(ho speso|pagato|ricevuto|comprato)/i, '').trim();
+            }
+            
+            return {
+                amount: amount,
+                description: description || text,
+                category: category,
+                type: isIncome ? 'income' : 'expense',
+                confidence: 0.85,
+                originalText: text
+            };
+        }
+
+        function classifyCategory(text) {
+            const lowerText = text.toLowerCase();
+            
+            for (const cat of categories) {
+                for (const keyword of cat.keywords) {
+                    if (lowerText.includes(keyword)) {
+                        return cat.name;
+                    }
+                }
+            }
+            
+            return 'Altro';
+        }
+
+        async function callGroqAPI(text, apiKey) {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    messages: [{
+                        role: 'system',
+                        content: 'Sei un assistente AI che analizza transazioni finanziarie. Estrai da ogni frase: importo (numero), descrizione (testo pulito), categoria (Cibo, Trasporti, Shopping, Bollette, Intrattenimento, Salute, Stipendio, Freelance, Investimenti, Altro) e tipo (income/expense). Rispondi SOLO in formato JSON valido con: {"amount": numero, "description": "testo", "category": "categoria", "type": "income/expense"}'
+                    }, {
+                        role: 'user',
+                        content: text
+                    }],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            let content = data.choices[0].message.content;
+            
+            // Extract JSON from markdown code blocks if present
+            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) {
+                content = jsonMatch[1].trim();
+            }
+            
+            try {
+                return JSON.parse(content);
+            } catch (e) {
+                return { error: 'Invalid JSON response', raw: content };
+            }
+        }
+
+        // Helper functions
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+
+        function showTransactionResult(elementId, transaction) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `
+                <h4>💰 Transazione Estratta:</h4>
+                <div class="transaction-field">💵 Importo: €${transaction.amount}</div>
+                <div class="transaction-field">📝 Descrizione: ${transaction.description}</div>
+                <div class="transaction-field">🏷️ Categoria: ${transaction.category}</div>
+                <div class="transaction-field">📊 Tipo: ${transaction.type === 'income' ? '📈 Entrata' : '📉 Uscita'}</div>
+                ${transaction.confidence ? `<div class="transaction-field">🎯 Confidenza: ${(transaction.confidence * 100).toFixed(1)}%</div>` : ''}
+            `;
+            element.style.display = 'block';
+        }
+
+        function updateTestSummary() {
+            const summary = document.getElementById('testSummary');
+            let content = '<h4>📊 Riepilogo Test Eseguiti:</h4>';
+            
+            if (testResults.naturalLanguage) {
+                content += '<p>✅ Test Linguaggio Naturale: Completato</p>';
+            }
+            if (testResults.audio) {
+                content += '<p>✅ Test Audio: Completato</p>';
+            }
+            if (testResults.patterns) {
+                content += '<p>✅ Test Pattern: Completato</p>';
+            }
+            if (testResults.categories) {
+                content += '<p>✅ Test Categorie: Completato</p>';
+            }
+            
+            const completedTests = Object.values(testResults).filter(r => r !== null).length;
+            content += `<p><strong>Test completati: ${completedTests}/4</strong></p>`;
+            
+            if (completedTests === 4) {
+                content += '<p style="color: green; font-weight: bold;">🎉 Tutti i test completati con successo!</p>';
+            }
+            
+            summary.innerHTML = content;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test AI Standalone loaded');
+            updateTestSummary();
+        });
+    </script>
+</body>
+</html>

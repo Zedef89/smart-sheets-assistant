@@ -24,7 +24,7 @@ const Hero = ({ onGetStarted }: HeroProps) => {
           
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
             Registra le tue spese in linguaggio naturale, lascia che l'AI le categorizzi automaticamente 
-            e visualizza i tuoi dati finanziari sincronizzati con Google Sheets.
+            e visualizza i tuoi dati finanziari in tempo reale.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -60,9 +60,9 @@ const Hero = ({ onGetStarted }: HeroProps) => {
             <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center mb-4">
               <Sheet className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">Google Sheets Sync</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">Database Sicuro</h3>
             <p className="text-gray-600">
-              I tuoi dati vengono salvati direttamente nel tuo Google Sheet personale.
+              I tuoi dati vengono salvati in modo sicuro nel nostro database cloud.
             </p>
           </Card>
           

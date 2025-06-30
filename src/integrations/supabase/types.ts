@@ -125,20 +125,14 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
-          google_sheet_id: string | null
-          google_sheet_title: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
-          google_sheet_id?: string | null
-          google_sheet_title?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
-          google_sheet_id?: string | null
-          google_sheet_title?: string | null
           user_id?: string
         }
         Relationships: []

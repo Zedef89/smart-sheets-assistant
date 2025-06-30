@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AI Integration - Smart Sheets Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .recording {
+            background-color: #dc3545;
+        }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .audio-controls button {
+            width: auto;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Test AI Integration - Smart Sheets Assistant</h1>
+        <p>Questo test verifica le funzionalità AI senza coinvolgere il database.</p>
+        
+        <!-- Test 1: Natural Language Processing -->
+        <div class="test-section">
+            <h3>📝 Test 1: Processamento Linguaggio Naturale</h3>
+            <p>Inserisci una frase come: "Ho speso 25 euro per la pizza stasera"</p>
+            <textarea id="naturalLanguageInput" placeholder="Esempio: Ho speso 25 euro per la pizza stasera" rows="3"></textarea>
+            <button onclick="testNaturalLanguage()" id="nlButton">Analizza con AI</button>
+            <div id="nlResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 2: Audio Recording and Transcription -->
+        <div class="test-section">
+            <h3>🎤 Test 2: Registrazione Audio e Trascrizione</h3>
+            <p>Registra un messaggio vocale per testare la trascrizione AI</p>
+            <div class="audio-controls">
+                <button onclick="startRecording()" id="startBtn">🎤 Inizia Registrazione</button>
+                <button onclick="stopRecording()" id="stopBtn" disabled>⏹️ Ferma Registrazione</button>
+                <button onclick="processAudio()" id="processBtn" disabled>🤖 Trascrivi con AI</button>
+            </div>
+            <div id="recordingStatus"></div>
+            <audio id="audioPlayback" controls style="width: 100%; margin: 10px 0; display: none;"></audio>
+            <div id="audioResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 3: Direct API Test -->
+        <div class="test-section">
+            <h3>🔧 Test 3: Test Diretto API Groq</h3>
+            <p>Test diretto dell'endpoint Supabase per verificare la connessione con Groq</p>
+            <input type="text" id="directApiInput" placeholder="Messaggio di test per l'API" value="Analizza questa transazione: ho comprato un caffè per 2.50 euro">
+            <button onclick="testDirectAPI()" id="apiButton">Test API Diretta</button>
+            <div id="apiResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="test-section">
+            <h3>⚙️ Configurazione</h3>
+            <p>URL Supabase Function (modifica se necessario):</p>
+            <input type="text" id="supabaseUrl" value="http://localhost:54321/functions/v1/groq-ai" placeholder="URL della funzione Supabase">
+            <p><small>Assicurati che Supabase sia in esecuzione localmente e che la variabile GROQ_API_KEY sia configurata.</small></p>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+
+        // Test 1: Natural Language Processing
+        async function testNaturalLanguage() {
+            const input = document.getElementById('naturalLanguageInput').value;
+            const button = document.getElementById('nlButton');
+            const result = document.getElementById('nlResult');
+            
+            if (!input.trim()) {
+                showResult('nlResult', 'Inserisci del testo da analizzare', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Analizzando...';
+            
+            try {
+                const response = await callGroqAPI({
+                    text: input,
+                    type: 'text',
+                    action: 'analyze',
+                    messages: [{
+                        role: 'system',
+                        content: 'Sei un assistente AI che analizza transazioni finanziarie. Estrai da ogni frase: importo, descrizione, categoria (Cibo, Trasporti, Shopping, Bollette, Intrattenimento, Salute, Stipendio, Freelance, Investimenti, Altro) e tipo (income/expense). Rispondi in formato JSON con: {"amount": numero, "description": "testo", "category": "categoria", "type": "income/expense"}'
+                    }, {
+                        role: 'user',
+                        content: input
+                    }]
+                });
+                
+                showResult('nlResult', `Risposta AI:\n${JSON.stringify(response, null, 2)}`, 'success');
+            } catch (error) {
+                showResult('nlResult', `Errore: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Analizza con AI';
+            }
+        }
+
+        // Test 2: Audio Recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audioElement = document.getElementById('audioPlayback');
+                    audioElement.src = audioUrl;
+                    audioElement.style.display = 'block';
+                    document.getElementById('processBtn').disabled = false;
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('recordingStatus').innerHTML = '<span style="color: red;">🔴 Registrazione in corso...</span>';
+            } catch (error) {
+                showResult('audioResult', `Errore accesso microfono: ${error.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('recordingStatus').innerHTML = '<span style="color: green;">✅ Registrazione completata</span>';
+            }
+        }
+
+        async function processAudio() {
+            if (!audioBlob) return;
+            
+            const button = document.getElementById('processBtn');
+            button.disabled = true;
+            button.textContent = '🤖 Trascrivendo...';
+
+            try {
+                // Convert blob to base64
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result;
+                    const audioData = base64Audio.split(',')[1]; // Remove data:audio/wav;base64, prefix
+
+                    try {
+                        const response = await callGroqAPI({
+                            audio: audioData,
+                            type: 'audio',
+                            action: 'transcribe'
+                        });
+                        
+                        showResult('audioResult', `Trascrizione:\n${JSON.stringify(response, null, 2)}`, 'success');
+                    } catch (error) {
+                        showResult('audioResult', `Errore trascrizione: ${error.message}`, 'error');
+                    } finally {
+                        button.disabled = false;
+                        button.textContent = '🤖 Trascrivi con AI';
+                    }
+                };
+                reader.readAsDataURL(audioBlob);
+            } catch (error) {
+                showResult('audioResult', `Errore: ${error.message}`, 'error');
+                button.disabled = false;
+                button.textContent = '🤖 Trascrivi con AI';
+            }
+        }
+
+        // Test 3: Direct API Test
+        async function testDirectAPI() {
+            const input = document.getElementById('directApiInput').value;
+            const button = document.getElementById('apiButton');
+            
+            if (!input.trim()) {
+                showResult('apiResult', 'Inserisci un messaggio di test', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Testando API...';
+            
+            try {
+                const response = await callGroqAPI({
+                    text: input,
+                    messages: [{ role: 'user', content: input }]
+                });
+                
+                showResult('apiResult', `Risposta API:\n${JSON.stringify(response, null, 2)}`, 'success');
+            } catch (error) {
+                showResult('apiResult', `Errore API: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test API Diretta';
+            }
+        }
+
+        // Helper function to call Groq API via Supabase
+        async function callGroqAPI(payload) {
+            const url = document.getElementById('supabaseUrl').value;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            return await response.json();
+        }
+
+        // Helper function to show results
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test AI Integration loaded');
+        });
+    </script>
+</body>
+</html>

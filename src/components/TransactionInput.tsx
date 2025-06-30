@@ -109,13 +109,20 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
           role: 'user',
           content: `Analyze this transaction and return a JSON with the fields: amount (number), description (string), category (string), type ("income" or "expense"). 
           
-          IMPORTANT: Detect the language of the input text and respond with categories in the SAME language as the input.
-          NEVER use "Altro" or "Other" as category. Always choose the most specific category available.
+          IMPORTANT: 
+          1. Detect the language of the input text and respond with categories in the SAME language as the input.
+          2. NEVER use "Altro" or "Other" as category. Always choose the most specific category available.
+          3. For the description field, create a SHORT SUMMARY (max 3-4 words) of what the transaction is about, NOT the full user input text.
           
           If the input is in Italian, use Italian categories like: "Cibo", "Trasporti", "Shopping", "Stipendio", "Casa", "Salute", "Intrattenimento", "Vizi", "Benzina", "Bollette", "Abbonamenti", "Regali", "Farmacia", "Ristorante", "Supermercato", "Vestiti", "Tecnologia", "Sport", "Viaggi", "Educazione", "Assicurazioni", "Tasse".
           If the input is in English, use English categories like: "Food", "Transportation", "Shopping", "Salary", "Home", "Health", "Entertainment", "Vices", "Gas", "Bills", "Subscriptions", "Gifts", "Pharmacy", "Restaurant", "Grocery", "Clothing", "Technology", "Sports", "Travel", "Education", "Insurance", "Taxes".
           
           For cigarettes, tobacco, alcohol, gambling use "Vizi" (Italian) or "Vices" (English).
+          
+          Examples of good descriptions:
+          - Input: "Ho speso 25 euro per la pizza con gli amici stasera" → Description: "Pizza con amici"
+          - Input: "Pagato 50 euro di benzina alla stazione Eni" → Description: "Benzina Eni"
+          - Input: "Ricevuto stipendio di 1500 euro questo mese" → Description: "Stipendio mensile"
           
           Text to analyze: "${text}"`
         }],
@@ -196,8 +203,42 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
       }
     }
     
+    // Genera un riassunto breve della descrizione
+    const generateShortDescription = (fullText: string): string => {
+      const words = fullText.trim().split(' ');
+      
+      // Se il testo è già breve (3 parole o meno), restituiscilo così com'è
+      if (words.length <= 3) {
+        return fullText;
+      }
+      
+      // Cerca parole chiave importanti
+      const keywords = ['pizza', 'benzina', 'stipendio', 'cena', 'pranzo', 'ristorante', 'supermercato', 'farmacia', 'bolletta', 'affitto', 'taxi', 'metro', 'vestiti', 'scarpe'];
+      const foundKeywords = words.filter(word => 
+        keywords.some(keyword => word.toLowerCase().includes(keyword.toLowerCase()))
+      );
+      
+      if (foundKeywords.length > 0) {
+        // Usa le parole chiave trovate + eventuali dettagli
+        const mainKeyword = foundKeywords[0];
+        const otherWords = words.filter(word => 
+          !word.toLowerCase().includes(mainKeyword.toLowerCase()) &&
+          !['ho', 'speso', 'pagato', 'per', 'di', 'euro', 'alla', 'al', 'con', 'il', 'la', 'le', 'gli', 'un', 'una'].includes(word.toLowerCase())
+        ).slice(0, 2);
+        
+        return [mainKeyword, ...otherWords].join(' ');
+      }
+      
+      // Fallback: prendi le prime 3 parole significative
+      const significantWords = words.filter(word => 
+        !['ho', 'speso', 'pagato', 'per', 'di', 'euro', 'alla', 'al', 'con', 'il', 'la', 'le', 'gli', 'un', 'una', 'che', 'sono', 'è'].includes(word.toLowerCase())
+      ).slice(0, 3);
+      
+      return significantWords.length > 0 ? significantWords.join(' ') : words.slice(0, 3).join(' ');
+    };
+    
     return {
-      description: text,
+      description: generateShortDescription(text),
       amount: extractedAmount,
       category: extractedCategory,
       type: transactionType

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
+import { useSyncSubscription } from './useSyncSubscription';
 
 export interface Subscription {
   id: string;
@@ -114,9 +115,13 @@ export function useIsSubscriptionExpired() {
 // Hook per gestire la sincronizzazione intelligente
 export function useSmartSubscriptionSync() {
   const { data: subscription, refetch } = useSubscription();
-  const { syncSubscription } = useAuth();
+  const syncMutation = useSyncSubscription();
   const isExpired = useIsSubscriptionExpired();
   const hasActive = useHasActiveSubscription();
+  
+  const syncSubscription = async () => {
+    return syncMutation.mutateAsync();
+  };
   
   // Sincronizza automaticamente se l'abbonamento è scaduto (non bloccante)
   useEffect(() => {

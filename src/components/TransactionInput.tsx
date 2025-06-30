@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Send, Sparkles, Mic, Brain, Crown, Clock } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Mic, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAddTransaction } from '@/hooks/useTransactions';
 import { useUpdateTransaction } from '@/hooks/useUpdateTransaction';
 import { useCategories } from '@/hooks/useCategories';
 import { useAddCategory } from '@/hooks/useAddCategory';
 import { useAIService } from '@/hooks/useAIService';
-import { useCanUseAINaturalInput, useIncrementAINaturalInput } from '@/hooks/useAIUsage';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHasActiveSubscription } from '@/hooks/useSubscription';
-import AIUsageIndicator from './AIUsageIndicator';
 
 import VoiceRecorder from './VoiceRecorder';
 
@@ -45,23 +39,12 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [localUsageExhausted, setLocalUsageExhausted] = useState(false);
   
   const { toast } = useToast();
   const addTransaction = useAddTransaction();
   const updateTransaction = useUpdateTransaction();
   const { data: categories } = useCategories();
   const addCategory = useAddCategory();
-  const canUseAINaturalInput = useCanUseAINaturalInput();
-  const incrementAINaturalInput = useIncrementAINaturalInput();
-  const { user } = useAuth();
-  const hasActiveSubscription = useHasActiveSubscription();
-  
-  // Combina il controllo del backend con lo stato locale
-  // Se ha un abbonamento attivo, può sempre usare l'AI
-  const canActuallyUseAI = hasActiveSubscription || (canUseAINaturalInput && !localUsageExhausted);
-
 
   // Pre-popola i campi quando si modifica una transazione
   useEffect(() => {
@@ -74,35 +57,9 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
       setManualMode(true); // Passa automaticamente alla modalità manuale per la modifica
     }
   }, [editingTransaction]);
-  
-  // Reindirizza automaticamente alla modalità manuale se l'utente non può più usare l'AI
-  useEffect(() => {
-    if (!manualMode && !showVoiceRecorder && !canActuallyUseAI) {
-      setManualMode(true);
-    }
-  }, [manualMode, showVoiceRecorder, canActuallyUseAI]);
-  
-  // Reset dello stato locale quando la cache si aggiorna e l'utente può di nuovo usare l'AI
-  useEffect(() => {
-    if (canUseAINaturalInput && localUsageExhausted) {
-      setLocalUsageExhausted(false);
-    }
-  }, [canUseAINaturalInput, localUsageExhausted]);
-  
   const { processWithAI, loading: aiLoading } = useAIService();
 
   const processWithAI_Natural = async (text: string) => {
-    // Il controllo dei limiti ora avviene nel backend
-    // Il frontend controlla solo per l'UI, il backend farà il controllo definitivo
-    if (!canActuallyUseAI) {
-      toast({
-        title: "Limite raggiunto",
-        description: "Hai raggiunto il limite giornaliero di 2 input naturali AI. Passa a Premium per utilizzo illimitato!",
-        variant: "destructive"
-      });
-      return null;
-    }
-
     try {
       const result = await processWithAI({
         messages: [{
@@ -119,17 +76,8 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
         type: 'text',
         action: 'analyze'
       });
-      
-      // Incrementa l'utilizzo nel database solo dopo il successo dell'AI
-      await incrementAINaturalInput.mutateAsync();
-      
-      // Aggiorna lo stato locale per riflettere immediatamente l'utilizzo
-      // Questo previene ulteriori utilizzi fino al refresh della cache
-      if (!canUseAINaturalInput) {
-        setLocalUsageExhausted(true);
-      }
 
-      if (result && result.amount && result.description && parseFloat(result.amount.toString()) > 0) {
+      if (result && result.amount && result.description) {
         return {
           description: result.description,
           amount: parseFloat(result.amount.toString()),
@@ -137,21 +85,8 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
           type: (result.type === 'income' ? 'income' : 'expense') as 'income' | 'expense'
         };
       }
-      
-      // Se l'AI non ha restituito dati validi, mostra un messaggio di errore
-      console.log('AI processing returned invalid data:', result);
-      toast({
-        title: "Errore AI",
-        description: "L'AI non è riuscita a processare l'input. Riprova o usa la modalità manuale.",
-        variant: "destructive"
-      });
     } catch (error) {
       console.error('AI processing failed:', error);
-      toast({
-        title: "Errore AI",
-        description: "Errore nell'elaborazione AI. Riprova o usa la modalità manuale.",
-        variant: "destructive"
-      });
     }
     
     return null;
@@ -242,7 +177,7 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
       const aiParsed = await processWithAI_Natural(input);
       const parsed = aiParsed || parseNaturalLanguage(input);
       
-      if (!parsed || parsed.amount === 0) {
+      if (parsed.amount === 0) {
         toast({
           title: "Errore",
           description: "Non riesco a identificare l'importo. Prova con un formato come '15 euro'.",
@@ -352,28 +287,14 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
           </Button>
         </div>
 
-        {/* Mostra l'indicatore di utilizzo AI solo per le modalità che lo richiedono */}
-        {!manualMode && (
-          <div className="mb-6">
-            <AIUsageIndicator 
-              showType={showVoiceRecorder ? 'transcriptions' : 'naturalInputs'}
-              compact={false}
-            />
-          </div>
-        )}
-
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex space-x-2 flex-wrap gap-2">
             <Button
               type="button"
               variant={!manualMode && !showVoiceRecorder ? "default" : "outline"}
               onClick={() => {
-                if (canActuallyUseAI) {
-                  setManualMode(false);
-                  setShowVoiceRecorder(false);
-                } else {
-                  setShowUpgradeModal(true);
-                }
+                setManualMode(false);
+                setShowVoiceRecorder(false);
               }}
               size="sm"
             >
@@ -384,12 +305,8 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
               type="button"
               variant={showVoiceRecorder ? "default" : "outline"}
               onClick={() => {
-                if (canActuallyUseAI) {
-                  setShowVoiceRecorder(true);
-                  setManualMode(false);
-                } else {
-                  setShowUpgradeModal(true);
-                }
+                setShowVoiceRecorder(true);
+                setManualMode(false);
               }}
               size="sm"
             >
@@ -432,12 +349,12 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Es: Ho speso 15 euro per pizza..."
                     className="pr-12 min-h-[100px]"
-                    disabled={addTransaction.isPending || aiLoading || !canActuallyUseAI}
+                    disabled={addTransaction.isPending || aiLoading}
                   />
                   <Button 
                     type="submit" 
                     size="sm" 
-                    disabled={!input.trim() || addTransaction.isPending || aiLoading || !canActuallyUseAI}
+                    disabled={!input.trim() || addTransaction.isPending || aiLoading}
                     className="absolute right-2 bottom-2"
                   >
                     {addTransaction.isPending || aiLoading ? (
@@ -460,12 +377,7 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
                       key={index}
                       type="button"
                       onClick={() => setInput(suggestion)}
-                      disabled={!canActuallyUseAI}
-                      className={`text-left p-3 rounded-lg text-sm transition-colors ${
-                        !canActuallyUseAI 
-                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                      }`}
+                      className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-700 transition-colors"
                     >
                       {suggestion}
                     </button>
@@ -604,79 +516,6 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
           ) : null}
         </form>
       </Card>
-      
-      {/* Modale di Upgrade */}
-      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-yellow-500" />
-              Limite AI Raggiunto
-            </DialogTitle>
-            <DialogDescription className="text-center space-y-4">
-              <p>
-                Hai raggiunto il limite giornaliero di 2 input AI naturali.
-              </p>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-blue-900 mb-2">Opzioni disponibili:</h4>
-                <div className="space-y-3 text-sm text-blue-800">
-                  <div className="flex items-center gap-2">
-                    <Crown className="w-4 h-4" />
-                    <span>Passa a <strong>Premium</strong> per utilizzo illimitato</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Crown className="w-4 h-4" />
-                    <span>Acquista <strong>Lifetime</strong> per accesso permanente</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>Aspetta fino a <strong>domani</strong> per il reset</span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                Nel frattempo puoi continuare a usare la modalità <strong>Manuale</strong>.
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 mt-4">
-            <Button 
-              onClick={() => {
-                setShowUpgradeModal(false);
-                const email = user?.email || '';
-                const url = `https://buy.stripe.com/fZu6oHcjKdOS90y7xr2B200${email ? `?prefilled_email=${encodeURIComponent(email)}` : ''}`;
-                window.open(url, '_blank');
-              }}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <Crown className="w-4 h-4 mr-2" />
-              Passa a Premium
-            </Button>
-            <Button 
-              onClick={() => {
-                setShowUpgradeModal(false);
-                const email = user?.email || '';
-                const url = `https://buy.stripe.com/cNi5kD3Ne7qu5OmeZT2B201${email ? `?prefilled_email=${encodeURIComponent(email)}` : ''}`;
-                window.open(url, '_blank');
-              }}
-               className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
-             >
-               <Crown className="w-4 h-4 mr-2" />
-               Acquista Lifetime
-             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowUpgradeModal(false);
-                setManualMode(true);
-              }}
-              className="w-full"
-            >
-              Continua in Modalità Manuale
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

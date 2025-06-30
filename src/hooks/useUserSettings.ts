@@ -4,8 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserSettings {
   user_id: string;
-  google_sheet_id: string | null;
-  google_sheet_title: string | null;
+  // Settings interface - can be extended with other user preferences
 }
 
 export function useUserSettings() {

@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { getSiteUrl } from '@/utils/getSiteUrl';
+
 
 interface AuthContextType {
   user: User | null;
@@ -39,27 +41,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+
   const signInWithGoogle = async () => {
     setLoading(true);
-   const { error } = await supabase.auth.signInWithOAuth({
-  provider: 'google',
-  options: {
-    redirectTo: process.env.NEXT_PUBLIC_SITE_URL || 'https://smart-sheets-assistant.vercel.app',
-    queryParams: {
-      access_type: 'offline',
-      prompt: 'consent',
-      scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets'
-    }
-  }
-});
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: getSiteUrl(),
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+          scope: 'openid email profile'
+        }
+      }
+    });
 
-    
     if (error) {
       console.error('Error signing in with Google:', error);
       setLoading(false);
       throw error;
     }
-  };
+  }; // ✅ chiusura corretta
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -83,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuth() {
   const context = useContext(AuthContext);

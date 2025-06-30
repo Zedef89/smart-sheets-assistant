@@ -8,15 +8,16 @@ import { useToast } from '@/hooks/use-toast';
 
 interface VoiceRecorderProps {
   onTranscriptionComplete: (text: string) => void;
+  onAutoAnalysis?: (analysisResult: any) => void;
 }
 
-const VoiceRecorder = ({ onTranscriptionComplete }: VoiceRecorderProps) => {
+const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   
-  const { processWithAI, loading } = useAIService();
+  const { transcribeAudio, processWithAI, loading } = useAIService();
   const { toast } = useToast();
 
   const startRecording = async () => {
@@ -67,14 +68,38 @@ const VoiceRecorder = ({ onTranscriptionComplete }: VoiceRecorderProps) => {
       const base64Audio = reader.result as string;
       const audioData = base64Audio.split(',')[1]; // Remove data:audio/wav;base64, prefix
 
-      const result = await processWithAI({
-        audio: audioData,
-        type: 'audio',
-        action: 'transcribe'
-      });
+      const transcribedText = await transcribeAudio(audioData);
 
-      if (result?.result) {
-        onTranscriptionComplete(result.result);
+      if (transcribedText) {
+        onTranscriptionComplete(transcribedText);
+        
+        // Auto-analyze with AI if callback is provided
+        if (onAutoAnalysis) {
+          try {
+            const analysisResult = await processWithAI({
+               messages: [{
+                 role: 'user',
+                 content: `Analyze this transaction and return a JSON with the fields: amount (number), description (string), category (string), type ("income" or "expense"). 
+                 
+                 IMPORTANT: Detect the language of the input text and respond with categories in the SAME language as the input.
+                 
+                 If the input is in Italian, use Italian categories like: "Cibo", "Trasporti", "Shopping", "Stipendio", "Casa", "Salute", "Intrattenimento", "Altro".
+                 If the input is in English, use English categories like: "Food", "Transportation", "Shopping", "Salary", "Home", "Health", "Entertainment", "Other".
+                 
+                 Text to analyze: "${transcribedText}"`
+               }],
+               type: 'text',
+               action: 'analyze'
+             });
+            
+            if (analysisResult) {
+              onAutoAnalysis(analysisResult);
+            }
+          } catch (error) {
+            console.error('Auto-analysis error:', error);
+          }
+        }
+        
         setAudioBlob(null);
       }
     };

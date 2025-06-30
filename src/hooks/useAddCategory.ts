@@ -7,12 +7,44 @@ export function useAddCategory() {
 
   return useMutation({
     mutationFn: async (category: Omit<Category, 'id'>) => {
+      // Log authentication status
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔐 Auth Session:', {
+        user: session?.user?.id,
+        email: session?.user?.email,
+        role: session?.user?.role,
+        isAuthenticated: !!session?.user,
+        accessToken: session?.access_token ? 'present' : 'missing'
+      });
+      
+      // Test if we can read categories (should work with current policy)
+      const { data: testRead, error: readError } = await supabase
+        .from('categories')
+        .select('id')
+        .limit(1);
+      console.log('🔍 Categories read test:', { success: !readError, error: readError?.message });
+      
+      // Log the category data being inserted
+      console.log('📝 Inserting category:', category);
+      
       const { data, error } = await supabase
         .from('categories')
         .insert(category)
         .select()
         .single();
-      if (error) throw error;
+        
+      // Log the result
+      if (error) {
+        console.error('❌ Category insert error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+      
+      console.log('✅ Category created successfully:', data);
       return data as Category;
     },
     onSuccess: () => {

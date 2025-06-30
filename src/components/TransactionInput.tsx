@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,17 +7,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { X, Send, Sparkles, Loader2, Mic, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAddTransaction } from '@/hooks/useTransactions';
+import { useUpdateTransaction } from '@/hooks/useUpdateTransaction';
 import { useCategories } from '@/hooks/useCategories';
+import { useAddCategory } from '@/hooks/useAddCategory';
 import { useAIService } from '@/hooks/useAIService';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import { useAuth } from '@/contexts/AuthContext';
+
 import VoiceRecorder from './VoiceRecorder';
+
+interface Transaction {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  type: 'income' | 'expense';
+  date: string;
+}
 
 interface TransactionInputProps {
   onClose: () => void;
+  editingTransaction?: Transaction | null;
 }
 
-const TransactionInput = ({ onClose }: TransactionInputProps) => {
+const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps) => {
   const [input, setInput] = useState('');
   const [manualMode, setManualMode] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
@@ -25,30 +36,57 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newCategory, setNewCategory] = useState('');
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   
   const { toast } = useToast();
   const addTransaction = useAddTransaction();
+  const updateTransaction = useUpdateTransaction();
   const { data: categories } = useCategories();
+  const addCategory = useAddCategory();
+
+  // Pre-popola i campi quando si modifica una transazione
+  useEffect(() => {
+    if (editingTransaction) {
+      setDescription(editingTransaction.description);
+      setAmount(Math.abs(editingTransaction.amount).toString());
+      setCategory(editingTransaction.category);
+      setType(editingTransaction.type);
+      setDate(editingTransaction.date);
+      setManualMode(true); // Passa automaticamente alla modalità manuale per la modifica
+    }
+  }, [editingTransaction]);
   const { processWithAI, loading: aiLoading } = useAIService();
-  const { data: settings } = useUserSettings();
-  const { session } = useAuth();
 
   const processWithAI_Natural = async (text: string) => {
-    const result = await processWithAI({
-      text,
-      type: 'text',
-      action: 'analyze'
-    });
+    try {
+      const result = await processWithAI({
+        messages: [{
+          role: 'user',
+          content: `Analyze this transaction and return a JSON with the fields: amount (number), description (string), category (string), type ("income" or "expense"). 
+          
+          IMPORTANT: Detect the language of the input text and respond with categories in the SAME language as the input.
+          
+          If the input is in Italian, use Italian categories like: "Cibo", "Trasporti", "Shopping", "Stipendio", "Casa", "Salute", "Intrattenimento", "Altro".
+          If the input is in English, use English categories like: "Food", "Transportation", "Shopping", "Salary", "Home", "Health", "Entertainment", "Other".
+          
+          Text to analyze: "${text}"`
+        }],
+        type: 'text',
+        action: 'analyze'
+      });
 
-    if (result) {
-      // Parse AI response and extract transaction details
-      // This would depend on your n8n workflow response format
-      return {
-        description: result.result || text,
-        amount: parseFloat(result.result.match(/(\d+(?:[.,]\d{2})?)/)?.[1]?.replace(',', '.') || '0'),
-        category: result.categories?.[0] || 'Altro',
-        type: result.result.toLowerCase().includes('income') ? 'income' : 'expense'
-      };
+      if (result && result.amount && result.description) {
+        return {
+          description: result.description,
+          amount: parseFloat(result.amount.toString()),
+          category: result.category || 'Altro',
+          type: (result.type === 'income' ? 'income' : 'expense') as 'income' | 'expense'
+        };
+      }
+    } catch (error) {
+      console.error('AI processing failed:', error);
     }
     
     return null;
@@ -95,7 +133,7 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
     let transactionData;
     
     if (manualMode) {
-      if (!description || !amount || !category) {
+      if (!description || !amount || (!category && !newCategory)) {
         toast({
           title: "Errore",
           description: "Compila tutti i campi obbligatori.",
@@ -104,12 +142,33 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
         return;
       }
       
+      let finalCategory = category;
+      
+      // Se è stata inserita una nuova categoria, creala prima
+      if (newCategory && !category) {
+        try {
+          await addCategory.mutateAsync({
+            name: newCategory,
+            type: type === 'income' ? 'income' : 'expense',
+            color: type === 'income' ? '#10b981' : '#ef4444'
+          });
+          finalCategory = newCategory;
+        } catch (error) {
+          toast({
+            title: "Errore",
+            description: "Impossibile creare la nuova categoria.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+      
       transactionData = {
         description,
         amount: parseFloat(amount),
-        category,
+        category: finalCategory,
         type,
-        date: new Date().toISOString().split('T')[0]
+        date
       };
     } else {
       if (!input.trim()) return;
@@ -134,45 +193,31 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
     }
 
     try {
-      await addTransaction.mutateAsync(transactionData);
-      if (settings?.google_sheet_id && session?.provider_token) {
-        try {
-          await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${settings.google_sheet_id}/values/A1:append?valueInputOption=USER_ENTERED`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${session.provider_token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                values: [[
-                  transactionData.description,
-                  transactionData.amount,
-                  transactionData.category,
-                  transactionData.date,
-                ]],
-              }),
-            }
-          );
-        } catch (err) {
-          toast({
-            title: 'Sync error',
-            description: 'Impossibile sincronizzare con Google Sheet.',
-            variant: 'destructive',
-          });
-        }
+      if (editingTransaction) {
+        // Modalità modifica
+        await updateTransaction.mutateAsync({
+          id: editingTransaction.id,
+          description: transactionData.description,
+          amount: transactionData.amount,
+          category: transactionData.category,
+          type: transactionData.type,
+          date: transactionData.date,
+        });
+      } else {
+        // Modalità creazione
+        await addTransaction.mutateAsync(transactionData);
       }
+      
       toast({
-        title: "Transazione aggiunta!",
+        title: editingTransaction ? "Transazione aggiornata!" : "Transazione aggiunta!",
         description: `€${transactionData.amount.toFixed(2)} - ${transactionData.description}`,
       });
       onClose();
     } catch (error) {
-      console.error('Error adding transaction:', error);
+      console.error('Error processing transaction:', error);
       toast({
         title: "Errore",
-        description: "Impossibile aggiungere la transazione. Riprova.",
+        description: editingTransaction ? "Impossibile aggiornare la transazione. Riprova." : "Impossibile aggiungere la transazione. Riprova.",
         variant: "destructive"
       });
     }
@@ -180,11 +225,39 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
 
   const handleVoiceTranscription = (text: string) => {
     setInput(text);
-    setShowVoiceRecorder(false);
     toast({
       title: "Trascrizione completata",
       description: "Il testo è stato trascritto dalla registrazione vocale.",
     });
+  };
+
+  const handleAutoAnalysis = async (analysisResult: any) => {
+    if (analysisResult && analysisResult.amount && analysisResult.description) {
+      const transactionData = {
+        description: analysisResult.description,
+        amount: parseFloat(analysisResult.amount.toString()),
+        category: analysisResult.category || 'Altro',
+        type: (analysisResult.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      try {
+        await addTransaction.mutateAsync(transactionData);
+        toast({
+          title: "Transazione aggiunta automaticamente!",
+          description: `€${transactionData.amount.toFixed(2)} - ${transactionData.description}`,
+        });
+        setShowVoiceRecorder(false);
+        onClose();
+      } catch (error) {
+        console.error('Error adding transaction:', error);
+        toast({
+          title: "Errore",
+          description: "Impossibile aggiungere la transazione. Riprova.",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   const suggestions = [
@@ -205,7 +278,9 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <Sparkles className="w-5 h-5 text-emerald-600" />
-            <h3 className="text-xl font-semibold">Nuova Transazione</h3>
+            <h3 className="text-xl font-semibold">
+              {editingTransaction ? 'Modifica Transazione' : 'Nuova Transazione'}
+            </h3>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" />
@@ -254,7 +329,10 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
 
         {showVoiceRecorder && (
           <div className="mb-6">
-            <VoiceRecorder onTranscriptionComplete={handleVoiceTranscription} />
+            <VoiceRecorder 
+              onTranscriptionComplete={handleVoiceTranscription} 
+              onAutoAnalysis={handleAutoAnalysis}
+            />
           </div>
         )}
 
@@ -353,34 +431,85 @@ const TransactionInput = ({ onClose }: TransactionInputProps) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data *
+                </label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Categoria *
                 </label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.name}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!showNewCategoryInput ? (
+                  <div className="space-y-2">
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.name}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowNewCategoryInput(true);
+                        setCategory('');
+                      }}
+                      className="w-full"
+                    >
+                      + Aggiungi nuova categoria
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      placeholder="Nome nuova categoria"
+                      required
+                    />
+                    <div className="flex space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowNewCategoryInput(false);
+                          setNewCategory('');
+                        }}
+                        className="flex-1"
+                      >
+                        Annulla
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Button 
                 type="submit" 
-                disabled={addTransaction.isPending}
+                disabled={addTransaction.isPending || updateTransaction.isPending}
                 className="w-full"
               >
-                {addTransaction.isPending ? (
+                {(addTransaction.isPending || updateTransaction.isPending) ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     Salvando...
                   </>
                 ) : (
-                  'Aggiungi Transazione'
+                  editingTransaction ? 'Aggiorna Transazione' : 'Aggiungi Transazione'
                 )}
               </Button>
             </div>

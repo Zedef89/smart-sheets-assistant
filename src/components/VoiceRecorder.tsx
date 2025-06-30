@@ -40,7 +40,7 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
         setAudioBlob(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };

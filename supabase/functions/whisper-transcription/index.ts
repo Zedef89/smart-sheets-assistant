@@ -73,11 +73,11 @@ serve(async (req: Request) => {
 
     // Convert base64 to blob
     const audioBuffer = Uint8Array.from(atob(audioData), c => c.charCodeAt(0));
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/webm' });
     
     // Create FormData for Whisper API
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.wav');
+    formData.append('file', audioBlob, 'audio.webm');
     formData.append('model', 'whisper-large-v3');
     formData.append('language', 'it'); // Italian language
     formData.append('response_format', 'json');

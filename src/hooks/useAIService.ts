@@ -97,12 +97,42 @@ export function useAIService() {
         throw new Error('User not authenticated');
       }
 
-      const { data, error } = await supabase.functions.invoke('whisper-transcription', {
-        body: { audioData },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+      // Debug logging
+      console.log('Session status:', {
+        hasSession: !!session,
+        hasAccessToken: !!session.access_token,
+        tokenLength: session.access_token?.length,
+        expiresAt: session.expires_at,
+        currentTime: Math.floor(Date.now() / 1000)
       });
+
+      // Try direct fetch instead of supabase.functions.invoke
+      const SUPABASE_URL = 'https://agdskvhbmbpowwqyfanr.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnZHNrdmhibWJwb3d3cXlmYW5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NTQ1NjEsImV4cCI6MjA2NjEzMDU2MX0.cvBnDFd6flGlB4jXMT4jHefHzr__svn0Kivt4eONExE';
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/whisper-transcription`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ audioData })
+      });
+
+      console.log('Direct fetch response status:', response.status);
+      console.log('Direct fetch response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Error response body:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Transcription response data:', data);
+      
+      const error = null; // No error if we reach here
 
       if (error) {
         throw error;

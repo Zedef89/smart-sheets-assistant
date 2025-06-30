@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, Authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req: Request) => {
@@ -14,8 +14,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Get authorization header
-    const authHeader = req.headers.get('authorization');
+    // Get authorization header (try both cases)
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     if (!authHeader) {
       return new Response('Missing authorization header', { 
         status: 401, 
@@ -26,14 +26,13 @@ serve(async (req: Request) => {
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user from auth header
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Extract JWT token from authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+
+    // Get user from JWT token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
     if (authError || !user) {
       return new Response('Unauthorized', { 
         status: 401, 

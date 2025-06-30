@@ -3,12 +3,19 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Sparkles, TrendingUp, Brain, Sheet } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface HeroProps {
   onGetStarted: () => void;
 }
 
 const Hero = ({ onGetStarted }: HeroProps) => {
+  const navigate = useNavigate();
+
+  const handleTitleClick = () => {
+    navigate('/');
+  };
+
   return (
     <div className="min-h-[80vh] bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 px-6">
       <div className="max-w-6xl mx-auto pt-20 pb-16">
@@ -18,7 +25,10 @@ const Hero = ({ onGetStarted }: HeroProps) => {
             <span className="text-sm font-medium text-emerald-700">Powered by AI</span>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 
+            className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight cursor-pointer hover:opacity-80 transition-opacity duration-200"
+            onClick={handleTitleClick}
+          >
             Il tuo <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">assistente finanziario</span> intelligente
           </h1>
           

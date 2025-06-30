@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserCircle, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const { user, signInWithGoogle, signOut, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignIn = async () => {
     try {
@@ -24,10 +26,17 @@ const Header = () => {
     }
   };
 
+  const handleLogoClick = () => {
+    navigate('/');
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center space-x-3">
+        <div 
+          className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+          onClick={handleLogoClick}
+        >
           <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">€</span>
           </div>

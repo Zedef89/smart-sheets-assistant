@@ -4,9 +4,13 @@ import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import Dashboard from '@/components/Dashboard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSmartSubscriptionSync } from '@/hooks/useSubscription';
 
 const Index = () => {
   const { user, loading, signInWithGoogle } = useAuth();
+  
+  // Inizializza la sincronizzazione intelligente dell'abbonamento
+  useSmartSubscriptionSync();
 
   if (loading) {
     return (

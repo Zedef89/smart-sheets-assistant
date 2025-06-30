@@ -1,10 +1,11 @@
 
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Mic, Square, Send, Loader2 } from 'lucide-react';
 import { useAIService } from '@/hooks/useAIService';
 import { useToast } from '@/hooks/use-toast';
+import { useCanUseAITranscription, useIncrementAITranscription, useCanUseAINaturalInput, useIncrementAINaturalInput } from '@/hooks/useAIUsage';
+import { useHasActiveSubscription } from '@/hooks/useSubscription';
 
 interface VoiceRecorderProps {
   onTranscriptionComplete: (text: string) => void;
@@ -19,6 +20,11 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
   
   const { transcribeAudio, processWithAI, loading } = useAIService();
   const { toast } = useToast();
+  const canUseAITranscription = useCanUseAITranscription();
+  const incrementAITranscription = useIncrementAITranscription();
+  const canUseAINaturalInput = useCanUseAINaturalInput();
+  const incrementAINaturalInput = useIncrementAINaturalInput();
+  const hasActiveSubscription = useHasActiveSubscription();
 
   const startRecording = async () => {
     try {
@@ -45,8 +51,8 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
     } catch (error) {
       console.error('Error starting recording:', error);
       toast({
-        title: "Recording Error",
-        description: "Could not access microphone. Please check permissions.",
+        title: "Errore Registrazione",
+        description: "Impossibile accedere al microfono. Controlla i permessi.",
         variant: "destructive"
       });
     }
@@ -62,6 +68,18 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
   const processAudio = async () => {
     if (!audioBlob) return;
 
+    // Controlla i limiti per la trascrizione AI
+    if (!canUseAITranscription) {
+      toast({
+        title: "Limite raggiunto",
+        description: hasActiveSubscription 
+          ? "Errore nel controllo dell'abbonamento" 
+          : "Hai raggiunto il limite giornaliero di 2 trascrizioni AI. Passa a Premium per utilizzo illimitato!",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Convert blob to base64
     const reader = new FileReader();
     reader.onloadend = async () => {
@@ -69,12 +87,18 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
       const audioData = base64Audio.split(',')[1]; // Remove data:audio/wav;base64, prefix
 
       const transcribedText = await transcribeAudio(audioData);
+      
+      if (transcribedText) {
+        // Incrementa il contatore solo se la trascrizione ha avuto successo
+        await incrementAITranscription.mutateAsync();
+      }
 
       if (transcribedText) {
         onTranscriptionComplete(transcribedText);
         
         // Auto-analyze with AI if callback is provided
         if (onAutoAnalysis) {
+          
           try {
             const analysisResult = await processWithAI({
                messages: [{
@@ -93,10 +117,20 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
              });
             
             if (analysisResult) {
+              // Incrementa il contatore solo se l'analisi ha avuto successo
+              // e se l'utente può ancora usare l'AI
+              if (canUseAINaturalInput) {
+                await incrementAINaturalInput.mutateAsync();
+              }
               onAutoAnalysis(analysisResult);
             }
           } catch (error) {
             console.error('Auto-analysis error:', error);
+            toast({
+              title: "Errore AI",
+              description: "Errore nell'analisi automatica. La trascrizione è comunque disponibile.",
+              variant: "destructive"
+            });
           }
         }
         
@@ -108,53 +142,74 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
   };
 
   return (
-    <Card className="p-4">
-      <div className="flex flex-col items-center space-y-4">
-        <h3 className="text-lg font-semibold">Voice Recording</h3>
-        
-        <div className="flex space-x-4">
-          {!isRecording ? (
-            <Button 
-              onClick={startRecording}
-              className="bg-red-500 hover:bg-red-600"
-              disabled={loading}
-            >
-              <Mic className="w-4 h-4 mr-2" />
-              Start Recording
-            </Button>
-          ) : (
-            <Button 
-              onClick={stopRecording}
-              variant="outline"
-            >
-              <Square className="w-4 h-4 mr-2" />
-              Stop Recording
-            </Button>
-          )}
-          
-          {audioBlob && (
-            <Button 
-              onClick={processAudio}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
-              Process Audio
-            </Button>
-          )}
-        </div>
-        
-        {isRecording && (
-          <div className="flex items-center space-x-2 text-red-500">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span>Recording...</span>
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Registra la tua transazione vocalmente
+        </label>
+        <div className="flex flex-col items-center space-y-4 p-4 border rounded-lg bg-gray-50">
+          <div className="flex space-x-4">
+            {!isRecording ? (
+              <Button 
+                onClick={startRecording}
+                className="bg-red-500 hover:bg-red-600"
+                disabled={loading}
+              >
+                <Mic className="w-4 h-4 mr-2" />
+                Inizia Registrazione
+              </Button>
+            ) : (
+              <Button 
+                onClick={stopRecording}
+                variant="outline"
+              >
+                <Square className="w-4 h-4 mr-2" />
+                Ferma Registrazione
+              </Button>
+            )}
+            
+            {audioBlob && (
+              <Button 
+                onClick={processAudio}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2" />
+                )}
+                Elabora Audio
+              </Button>
+            )}
           </div>
-        )}
-      </div>
-    </Card>
+          
+          {isRecording && (
+             <div className="flex items-center space-x-2 text-red-500">
+               <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+               <span>Registrazione in corso...</span>
+             </div>
+           )}
+         </div>
+       </div>
+       
+       <div>
+         <h4 className="text-sm font-medium text-gray-700 mb-3">Esempi di registrazioni vocali:</h4>
+         <div className="grid grid-cols-1 gap-2">
+           <div className="text-left p-3 rounded-lg text-sm bg-gray-50 text-gray-700">
+             "Ho speso venticinque euro per la spesa al supermercato"
+           </div>
+           <div className="text-left p-3 rounded-lg text-sm bg-gray-50 text-gray-700">
+             "Cena fuori quarantacinque euro"
+           </div>
+           <div className="text-left p-3 rounded-lg text-sm bg-gray-50 text-gray-700">
+             "Benzina sessanta euro"
+           </div>
+           <div className="text-left p-3 rounded-lg text-sm bg-gray-50 text-gray-700">
+             "Ho ricevuto lo stipendio di duemiladuecento euro"
+           </div>
+         </div>
+       </div>
+     </div>
   );
 };
 

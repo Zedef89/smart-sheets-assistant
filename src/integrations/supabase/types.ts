@@ -137,6 +137,77 @@ export type Database = {
         }
         Relationships: []
       }
+      ,
+      ai_usage: {
+        Row: {
+          id: string
+          user_id: string
+          usage_date: string
+          ai_transcriptions: number
+          ai_natural_inputs: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          usage_date?: string
+          ai_transcriptions?: number
+          ai_natural_inputs?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          usage_date?: string
+          ai_transcriptions?: number
+          ai_natural_inputs?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ,
+      subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          stripe_price_id: string | null
+          status: string
+          current_period_start: string | null
+          current_period_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_price_id?: string | null
+          status?: string
+          current_period_start?: string | null
+          current_period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_price_id?: string | null
+          status?: string
+          current_period_start?: string | null
+          current_period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

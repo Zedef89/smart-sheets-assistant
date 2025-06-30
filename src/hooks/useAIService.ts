@@ -32,8 +32,17 @@ export function useAIService() {
     setLoading(true);
     
     try {
+      // Get the current session to include auth headers
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
       const { data, error } = await supabase.functions.invoke('groq-ai', {
         body: request,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) {
@@ -82,8 +91,17 @@ export function useAIService() {
     setLoading(true);
     
     try {
+      // Get the current session to include auth headers
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
       const { data, error } = await supabase.functions.invoke('whisper-transcription', {
         body: { audioData },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) {

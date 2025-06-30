@@ -15,6 +15,7 @@ import { useAddCategory } from '@/hooks/useAddCategory';
 import { useAIService } from '@/hooks/useAIService';
 import { useCanUseAINaturalInput, useIncrementAINaturalInput } from '@/hooks/useAIUsage';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHasActiveSubscription } from '@/hooks/useSubscription';
 import AIUsageIndicator from './AIUsageIndicator';
 
 import VoiceRecorder from './VoiceRecorder';
@@ -55,9 +56,11 @@ const TransactionInput = ({ onClose, editingTransaction }: TransactionInputProps
   const canUseAINaturalInput = useCanUseAINaturalInput();
   const incrementAINaturalInput = useIncrementAINaturalInput();
   const { user } = useAuth();
+  const hasActiveSubscription = useHasActiveSubscription();
   
   // Combina il controllo del backend con lo stato locale
- const canActuallyUseAI = canUseAINaturalInput && !localUsageExhausted;
+  // Se ha un abbonamento attivo, può sempre usare l'AI
+  const canActuallyUseAI = hasActiveSubscription || (canUseAINaturalInput && !localUsageExhausted);
 
 
   // Pre-popola i campi quando si modifica una transazione

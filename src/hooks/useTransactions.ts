@@ -58,7 +58,6 @@ export function useAddTransaction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     }
   });
 }

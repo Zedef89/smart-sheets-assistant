@@ -1,11 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Send, Loader2, Download } from 'lucide-react';
+import { Mic, Square, Send, Loader2 } from 'lucide-react';
 import { useAIService } from '@/hooks/useAIService';
 import { useToast } from '@/hooks/use-toast';
 import { useCanUseAITranscription, useIncrementAITranscription, useCanUseAINaturalInput, useIncrementAINaturalInput } from '@/hooks/useAIUsage';
 import { useHasActiveSubscription } from '@/hooks/useSubscription';
-import { supabase } from '@/integrations/supabase/client';
 
 interface VoiceRecorderProps {
   onTranscriptionComplete: (text: string) => void;
@@ -15,7 +14,6 @@ interface VoiceRecorderProps {
 const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   
@@ -29,42 +27,31 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
 
   const startRecording = async () => {
     try {
-      console.log('🎤 Avvio registrazione...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const mediaRecorder = new MediaRecorder(stream);
       
-      console.log('📱 MediaRecorder creato con tipo:', recorder.mimeType);
-      
-      mediaRecorderRef.current = recorder;
+      mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
-      setRecordingStartTime(Date.now());
 
-      recorder.ondataavailable = (event) => {
-        console.log('📦 Dati audio ricevuti, dimensione:', event.data.size, 'bytes');
+      mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
 
-      recorder.onstop = () => {
-        const recordingDuration = recordingStartTime ? (Date.now() - recordingStartTime) / 1000 : 0;
-        console.log('⏱️ Durata registrazione:', recordingDuration, 'secondi');
-        
+      mediaRecorder.onstop = () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        console.log('🔴 Registrazione fermata, blob creato:', audioBlob.size, 'bytes, tipo:', audioBlob.type);
-        
         setAudioBlob(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
 
-      recorder.start();
+      mediaRecorder.start();
       setIsRecording(true);
-      console.log('✅ Registrazione avviata alle:', new Date().toLocaleTimeString());
     } catch (error) {
-      console.error('❌ Errore avvio registrazione:', error);
+      console.error('Error starting recording:', error);
       toast({
-        title: "Errore Microfono",
-        description: "Impossibile accedere al microfono. Verifica i permessi del browser.",
+        title: "Errore Registrazione",
+        description: "Impossibile accedere al microfono. Controlla i permessi.",
         variant: "destructive"
       });
     }
@@ -78,91 +65,10 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
   };
 
   const processAudio = async () => {
-    console.log('🎯 === INIZIO ELABORAZIONE AUDIO ===');
-    
-    if (!audioBlob) {
-      console.log('❌ Nessun blob audio disponibile');
-      return;
-    }
-
-    console.log('🚀 Inizio elaborazione audio...');
-    console.log('📊 Dimensioni blob:', audioBlob.size, 'bytes');
-    console.log('📊 Tipo blob:', audioBlob.type);
-
-    // Validazione durata minima
-    const recordingDuration = recordingStartTime ? (Date.now() - recordingStartTime) / 1000 : 0;
-    console.log('⏱️ Durata calcolata:', recordingDuration, 'secondi');
-    
-    if (recordingDuration < 0.1) {
-      console.log('⚠️ Registrazione troppo breve:', recordingDuration, 'secondi');
-      toast({
-        title: "Registrazione troppo breve",
-        description: "La registrazione deve durare almeno 0.1 secondi. Riprova con una registrazione più lunga.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validazione dimensioni blob
-    if (audioBlob.size < 1000) {
-      console.log('⚠️ File audio troppo piccolo:', audioBlob.size, 'bytes');
-      toast({
-        title: "Audio insufficiente",
-        description: "Il file audio è troppo piccolo. Assicurati di parlare durante la registrazione.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Controlla stato autenticazione
-    console.log('🔐 Controllo autenticazione...');
-    console.log('👤 hasActiveSubscription:', hasActiveSubscription);
-    console.log('🎯 canUseAITranscription:', canUseAITranscription);
-    
-    // Verifica sessione Supabase
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('📋 Sessione Supabase:', {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        accessToken: session?.access_token ? 'PRESENTE' : 'MANCANTE',
-        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
-        error: sessionError
-      });
-      
-      if (!session) {
-        console.log('❌ ERRORE: Nessuna sessione attiva!');
-        toast({
-          title: "Errore Autenticazione",
-          description: "Sessione scaduta. Effettua nuovamente il login.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (!session.access_token) {
-        console.log('❌ ERRORE: Token di accesso mancante!');
-        toast({
-          title: "Errore Token",
-          description: "Token di accesso mancante. Riprova il login.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-    } catch (authError) {
-      console.log('❌ ERRORE durante controllo autenticazione:', authError);
-      toast({
-        title: "Errore Autenticazione",
-        description: "Impossibile verificare l'autenticazione.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!audioBlob) return;
 
     // Controlla i limiti per la trascrizione AI solo per utenti non premium
     if (!hasActiveSubscription && !canUseAITranscription) {
-      console.log('⚠️ Limite trascrizioni raggiunto per utente non premium');
       toast({
         title: "Limite raggiunto",
         description: "Hai raggiunto il limite giornaliero di 2 trascrizioni AI. Passa a Premium per utilizzo illimitato!",
@@ -172,57 +78,22 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
     }
 
     // Convert blob to base64
-    console.log('🔄 Conversione blob in base64...');
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64Audio = reader.result as string;
-      const audioData = base64Audio.split(',')[1]; // Remove data:audio/webm;base64, prefix
-      
-      console.log('📝 Dati base64 preparati, lunghezza:', audioData.length, 'caratteri');
-      console.log('🔗 === CHIAMATA API TRASCRIZIONE ===');
-      console.log('🌐 URL destinazione: https://agdskvhbmbpowwqyfanr.supabase.co/functions/v1/whisper-transcription');
-      
-      // Verifica nuovamente la sessione prima della chiamata
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('🔑 Token per chiamata API:', session?.access_token ? 'PRESENTE' : 'MANCANTE');
+      const audioData = base64Audio.split(',')[1]; // Remove data:audio/wav;base64, prefix
 
-      try {
-        console.log('⏳ Invio richiesta trascrizione...');
-        const startTime = Date.now();
-        
-        const transcribedText = await transcribeAudio(audioData);
-        
-        const endTime = Date.now();
-        console.log('⏱️ Tempo risposta API:', endTime - startTime, 'ms');
-        console.log('📋 Risultato trascrizione:', transcribedText || 'Nessun testo');
+      const transcribedText = await transcribeAudio(audioData);
       
-        if (transcribedText) {
-          console.log('✅ === TRASCRIZIONE COMPLETATA CON SUCCESSO ===');
-          console.log('📝 Testo trascritto:', transcribedText);
-          
-          // Incrementa il contatore solo per utenti non premium
-          // Gli utenti premium hanno utilizzo illimitato
-          if (!hasActiveSubscription) {
-            console.log('📊 Incremento contatore trascrizioni per utente non premium...');
-            try {
-              await incrementAITranscription.mutateAsync();
-              console.log('✅ Contatore incrementato con successo');
-            } catch (incrementError) {
-              console.log('❌ Errore incremento contatore:', incrementError);
-            }
-          } else {
-            console.log('👑 Utente premium - nessun incremento contatore necessario');
-          }
-        } else {
-          console.log('⚠️ Trascrizione vuota o fallita');
-          toast({
-            title: "Trascrizione fallita",
-            description: "Non è stato possibile trascrivere l'audio. Riprova con una registrazione più chiara.",
-            variant: "destructive"
-          });
-          return;
+      if (transcribedText) {
+        // Incrementa il contatore solo per utenti non premium
+        // Gli utenti premium hanno utilizzo illimitato
+        if (!hasActiveSubscription) {
+          await incrementAITranscription.mutateAsync();
         }
+      }
 
+      if (transcribedText) {
         onTranscriptionComplete(transcribedText);
         
         // Auto-analyze with AI if callback is provided
@@ -272,86 +143,10 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
         }
         
         setAudioBlob(null);
-        console.log('🎉 Processo completato con successo');
-        
-      } catch (transcriptionError: any) {
-        console.log('❌ === ERRORE TRASCRIZIONE ===');
-        console.log('🔍 Tipo errore:', typeof transcriptionError);
-        console.log('📋 Dettagli errore:', transcriptionError);
-        console.log('📋 Messaggio errore:', transcriptionError?.message || 'Nessun messaggio');
-        console.log('📋 Stack trace:', transcriptionError?.stack || 'Nessuno stack trace');
-        
-        // Se è un errore di rete, logga dettagli specifici
-        if (transcriptionError?.name === 'TypeError' && transcriptionError?.message?.includes('fetch')) {
-          console.log('🌐 Errore di rete rilevato');
-        }
-        
-        // Se è un errore 401, logga dettagli autenticazione
-        if (transcriptionError?.message?.includes('401') || transcriptionError?.status === 401) {
-          console.log('🔐 Errore 401 - Problema autenticazione rilevato');
-          const { data: { session } } = await supabase.auth.getSession();
-          console.log('🔍 Stato sessione al momento dell\'errore:', {
-            hasSession: !!session,
-            tokenPresent: !!session?.access_token,
-            expired: session?.expires_at ? Date.now() > session.expires_at * 1000 : 'unknown'
-          });
-        }
-        
-        // Gestione errori specifici basata sui test
-        let errorMessage = "Errore durante la trascrizione audio.";
-        
-        if (transcriptionError?.message?.includes('too short')) {
-          errorMessage = "L'audio è troppo breve. L'API richiede almeno 0.01 secondi di audio.";
-        } else if (transcriptionError?.message?.includes('Invalid API Key')) {
-          errorMessage = "Problema di autenticazione con il servizio AI. Contatta il supporto.";
-        } else if (transcriptionError?.message?.includes('audio file')) {
-          errorMessage = "Formato audio non supportato. Riprova la registrazione.";
-        } else if (transcriptionError?.status === 401) {
-          errorMessage = "Errore di autenticazione. Verifica di essere loggato.";
-        } else if (transcriptionError?.status === 400) {
-          errorMessage = "Problema con il file audio. Riprova con una registrazione più lunga e chiara.";
-        }
-        
-        toast({
-          title: "Errore Trascrizione",
-          description: errorMessage,
-          variant: "destructive"
-        });
       }
     };
     
-    console.log('📖 Avvio lettura file audio...');
     reader.readAsDataURL(audioBlob);
-    console.log('🎯 === FINE SETUP ELABORAZIONE AUDIO ===');
-  };
-
-  const downloadAudio = () => {
-    if (!audioBlob) {
-      toast({
-        title: "Nessun audio",
-        description: "Non c'è nessun file audio da scaricare. Registra prima un audio.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('💾 Download file audio...');
-    console.log('📊 Dimensioni file:', audioBlob.size, 'bytes');
-    console.log('📊 Tipo file:', audioBlob.type);
-    
-    const url = URL.createObjectURL(audioBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `registrazione_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Download completato",
-      description: "Il file audio è stato scaricato con successo.",
-    });
   };
 
   return (
@@ -382,28 +177,17 @@ const VoiceRecorder = ({ onTranscriptionComplete, onAutoAnalysis }: VoiceRecorde
             )}
             
             {audioBlob && (
-              <>
-                <Button 
-                  onClick={processAudio}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="w-4 h-4 mr-2" />
-                  )}
-                  Elabora Audio
-                </Button>
-                
-                <Button 
-                  onClick={downloadAudio}
-                  variant="outline"
-                  disabled={loading}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Scarica Audio
-                </Button>
-              </>
+              <Button 
+                onClick={processAudio}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2" />
+                )}
+                Elabora Audio
+              </Button>
             )}
           </div>
           

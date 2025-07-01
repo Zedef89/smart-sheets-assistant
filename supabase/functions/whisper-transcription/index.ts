@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, Authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req: Request) => {
@@ -14,15 +14,9 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Debug: Log all headers
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-    
-    // Get authorization header (try both cases)
-    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-    console.log('Auth header found:', !!authHeader, 'Length:', authHeader?.length);
-    
+    // Get authorization header
+    const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      console.log('Missing authorization header - available headers:', Object.fromEntries(req.headers.entries()));
       return new Response('Missing authorization header', { 
         status: 401, 
         headers: corsHeaders 
@@ -32,18 +26,15 @@ serve(async (req: Request) => {
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    });
 
-    // Extract JWT token from authorization header
-    const jwt = authHeader.replace('Bearer ', '');
-    console.log('JWT token extracted:', jwt.substring(0, 20) + '...');
-
-    // Get user from JWT token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
-    console.log('Auth result - User:', !!user, 'Error:', authError?.message);
-    
+    // Get user from auth header
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      console.log('Authentication failed:', authError);
       return new Response('Unauthorized', { 
         status: 401, 
         headers: corsHeaders 

@@ -1,80 +1,221 @@
-# Welcome to your Lovable project
+# Smart Sheets Assistant 🤖💰
 
-## Project info
+**Il tuo assistente finanziario intelligente powered by AI**
 
-**URL**: https://lovable.dev/projects/885e5569-9fa9-4fa2-9014-446064a54076
+Smart Sheets Assistant è un'applicazione web moderna per la gestione delle finanze personali che utilizza l'intelligenza artificiale per semplificare il tracciamento delle spese e delle entrate. Inserisci le tue transazioni in linguaggio naturale e lascia che l'AI faccia il resto!
 
-## How can I edit this code?
+## ✨ Caratteristiche Principali
 
-There are several ways of editing your application.
+### 🧠 Intelligenza Artificiale Avanzata
+- **Input in Linguaggio Naturale**: Scrivi "Ho speso 15€ per pizza" e l'AI capisce automaticamente importo, categoria e tipo di transazione
+- **Trascrizione Vocale**: Registra le tue spese parlando, l'AI trascrive e analizza automaticamente
+- **Categorizzazione Automatica**: L'AI suggerisce la categoria più appropriata per ogni transazione
+- **Analisi Smart**: Ricevi insights personalizzati sui tuoi pattern di spesa
 
-**Use Lovable**
+### 📊 Dashboard Interattiva
+- **Grafici in Tempo Reale**: Visualizza le tue finanze con grafici a torta e a barre dinamici
+- **Statistiche Rapide**: Panoramica immediata di entrate, uscite e bilancio
+- **Aggiornamenti Automatici**: I grafici si aggiornano automaticamente quando aggiungi, modifichi o elimini transazioni
+- **Filtri Temporali**: Analizza i dati per periodi specifici
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/885e5569-9fa9-4fa2-9014-446064a54076) and start prompting.
+### 💳 Gestione Transazioni
+- **CRUD Completo**: Crea, leggi, aggiorna ed elimina transazioni
+- **Validazione Intelligente**: Controlli automatici per prevenire errori (es. importi troppo elevati)
+- **Categorie Personalizzabili**: Sistema di categorie flessibile con colori distintivi
+- **Supporto Multi-Valuta**: Gestione di importi in diverse valute
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🔐 Sicurezza e Autenticazione
+- **Autenticazione Google**: Login sicuro tramite Google OAuth
+- **Row Level Security**: I dati sono protetti a livello di database
+- **Dati Crittografati**: Tutte le informazioni sono memorizzate in modo sicuro
 
-**Use your preferred IDE**
+### 🎙️ Funzionalità Vocali
+- **Registrazione Audio**: Registra le tue spese direttamente dall'app
+- **Trascrizione AI**: Conversione automatica da audio a testo usando Whisper
+- **Supporto Multilingua**: Ottimizzato per l'italiano ma supporta altre lingue
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Tecnologie Utilizzate
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Frontend
+- **React 18** con TypeScript
+- **Vite** per il build system
+- **React Router DOM** per la navigazione
+- **React Query (TanStack Query)** per la gestione dello stato e cache
+- **Recharts** per i grafici interattivi
+- **Radix UI** + **Shadcn/ui** per i componenti UI
+- **Tailwind CSS** per lo styling
+- **Lucide React** per le icone
 
-Follow these steps:
+### Backend
+- **Supabase** come Backend-as-a-Service
+- **PostgreSQL** per il database
+- **Supabase Edge Functions** (Deno) per le API
+- **Row Level Security (RLS)** per la sicurezza dei dati
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### AI e Machine Learning
+- **Groq API** con modello Llama per l'analisi del linguaggio naturale
+- **OpenAI Whisper** (via Groq) per la trascrizione vocale
+- **Prompt Engineering** ottimizzato per transazioni finanziarie
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Autenticazione e Pagamenti
+- **Supabase Auth** con Google OAuth
+- **Stripe** per la gestione dei pagamenti e abbonamenti
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🚀 Installazione e Setup
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Prerequisiti
+- Node.js 18+
+- npm o yarn
+- Account Supabase
+- API Key Groq
+- Account Stripe (per i pagamenti)
+
+### 1. Clona il Repository
+```bash
+git clone https://github.com/your-username/smart-sheets-assistant.git
+cd smart-sheets-assistant
+```
+
+### 2. Installa le Dipendenze
+```bash
+npm install
+```
+
+### 3. Configura le Variabili d'Ambiente
+Crea un file `.env.local` nella root del progetto:
+
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 4. Setup Supabase
+1. Crea un nuovo progetto su [Supabase](https://supabase.com)
+2. Esegui le migrazioni del database:
+```bash
+supabase db push
+```
+3. Configura le Edge Functions:
+```bash
+supabase functions deploy groq-ai
+supabase functions deploy whisper-transcription
+supabase functions deploy stripe-checkout
+supabase functions deploy stripe-webhook
+```
+
+### 5. Configura le API Keys
+Nelle impostazioni di Supabase, aggiungi le seguenti variabili d'ambiente:
+- `GROQ_API_KEY`: La tua API key di Groq
+- `STRIPE_SECRET_KEY`: La tua chiave segreta Stripe
+- `STRIPE_WEBHOOK_SECRET`: Il secret del webhook Stripe
+
+### 6. Avvia l'Applicazione
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+L'applicazione sarà disponibile su `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📱 Come Usare l'App
 
-**Use GitHub Codespaces**
+### 1. Primo Accesso
+1. Visita l'applicazione
+2. Clicca su "Inizia Gratis"
+3. Accedi con il tuo account Google
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 2. Aggiungere Transazioni
 
-## What technologies are used for this project?
+#### Metodo 1: Input Naturale
+1. Clicca su "Nuova Transazione"
+2. Scrivi in linguaggio naturale, ad esempio:
+   - "Ho speso 25€ per la spesa al supermercato"
+   - "Ricevuto stipendio di 1500€"
+   - "Pagato 80€ di bolletta della luce"
+3. L'AI analizzerà automaticamente e compilerà i campi
 
-This project is built with:
+#### Metodo 2: Registrazione Vocale
+1. Clicca sull'icona del microfono
+2. Parla chiaramente la tua transazione
+3. L'AI trascriverà e analizzerà automaticamente
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+#### Metodo 3: Input Manuale
+1. Compila manualmente i campi:
+   - Tipo (Entrata/Uscita)
+   - Descrizione
+   - Importo
+   - Categoria
+   - Data
 
-## How can I deploy this project?
+### 3. Visualizzare i Dati
+- **Dashboard**: Panoramica generale con grafici e statistiche
+- **Grafici Interattivi**: Hover sui grafici per dettagli specifici
+- **Lista Transazioni**: Visualizza, modifica o elimina transazioni esistenti
 
-Simply open [Lovable](https://lovable.dev/projects/885e5569-9fa9-4fa2-9014-446064a54076) and click on Share -> Publish.
+## 🏗️ Architettura del Database
 
-## Can I connect a custom domain to my Lovable project?
+### Tabelle Principali
 
-Yes, you can!
+#### `profiles`
+- Profili utente collegati all'autenticazione
+- Informazioni base (email, nome, avatar)
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+#### `transactions`
+- Transazioni finanziarie degli utenti
+- Campi: id, user_id, description, amount, category, type, date
+- Validazione: amount DECIMAL(10,2) per prevenire overflow
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+#### `categories`
+- Categorie predefinite per le transazioni
+- Supporto per colori e icone personalizzate
 
-## Environment variables
+#### `ai_usage_tracking`
+- Tracciamento dell'utilizzo delle funzionalità AI
+- Limiti giornalieri per trascrizioni e analisi
 
-Set the following secrets in your Supabase project before deploying:
+## 🔧 Funzionalità Avanzate
 
-- `GROQ_API_KEY` used by the `groq-ai` function
-- `STRIPE_SECRET_KEY` used by the `stripe-checkout` function
+### Sistema di Abbonamenti
+- **Piano Gratuito**: Funzionalità base con limiti
+- **Piano Premium**: Accesso illimitato alle funzionalità AI
+- Integrazione completa con Stripe
+
+### Gestione degli Errori
+- Validazione lato client e server
+- Messaggi di errore user-friendly
+- Fallback per funzionalità AI non disponibili
+
+### Performance
+- Caching intelligente con React Query
+- Invalidazione automatica delle query
+- Lazy loading dei componenti
+
+## 🤝 Contribuire
+
+1. Fork del repository
+2. Crea un branch per la tua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit delle modifiche (`git commit -m 'Add some AmazingFeature'`)
+4. Push del branch (`git push origin feature/AmazingFeature`)
+5. Apri una Pull Request
+
+## 📄 Licenza
+
+Questo progetto è distribuito sotto licenza MIT. Vedi il file `LICENSE` per maggiori dettagli.
+
+## 🆘 Supporto
+
+Per supporto o domande:
+- Apri una issue su GitHub
+- Contatta il team di sviluppo
+
+## 🔮 Roadmap
+
+- [ ] App mobile (React Native)
+- [ ] Esportazione dati (CSV, PDF)
+- [ ] Budgeting e obiettivi di risparmio
+- [ ] Integrazione con banche (Open Banking)
+- [ ] Analisi predittive avanzate
+- [ ] Supporto per criptovalute
+
+---
+
+**Smart Sheets Assistant** - Semplifica la gestione delle tue finanze con l'intelligenza artificiale! 🚀
